@@ -62,18 +62,7 @@ class RecoToGenFiller{
         float ecalEnergy;
         float pIn;
         float pOut;
-        float EemPinRatio;
-        float EemPoutRatio;
-        float GGE_p;
-        float GGE_pt;
-        float GGE_eta;
-        float GGE_phi;
-        float GGE_energy;
         float fbrem;
-        float dRGsfTrackElectron;
-        float inversedRFirstLastHit;
-        float radiusFirstHit;
-        float zFirstHit;
         float insidePFJet;
         float ptGen;
         float etaGen;
@@ -143,18 +132,6 @@ RecoToGenFiller::RecoToGenFiller(const TString & tag){
         tree_purity_GenLepB->Branch("ecalEnergy",&ecalEnergy,"ecalEnergy/F");
         tree_purity_GenLepB->Branch("pIn",&pIn,"pIn/F");
         tree_purity_GenLepB->Branch("pOut",&pOut,"pOut/F");
-        tree_purity_GenLepB->Branch("EemPinRatio",&EemPinRatio,"EemPinRatio/F");
-        tree_purity_GenLepB->Branch("EemPoutRatio",&EemPoutRatio,"EemPoutRatio/F");
-        tree_purity_GenLepB->Branch("GGE_p",&GGE_p,"GGE_p/F");
-        tree_purity_GenLepB->Branch("GGE_pt",&GGE_pt,"GGE_pt/F");
-        tree_purity_GenLepB->Branch("GGE_eta",&GGE_eta,"GGE_eta/F");
-        tree_purity_GenLepB->Branch("GGE_phi",&GGE_phi,"GGE_phi/F");
-        tree_purity_GenLepB->Branch("GGE_energy",&GGE_energy,"GGE_energy/F");
-        tree_purity_GenLepB->Branch("fbrem",&fbrem,"fbrem/F");
-        tree_purity_GenLepB->Branch("dRGsfTrackElectron",&dRGsfTrackElectron,"dRGsfTrackElectron/F");
-        tree_purity_GenLepB->Branch("inversedRFirstLastHit",&inversedRFirstLastHit,"inversedRFirstLastHit/F");
-        tree_purity_GenLepB->Branch("radiusFirstHit",&radiusFirstHit,"radiusFirstHit/F");
-        tree_purity_GenLepB->Branch("zFirstHit",&zFirstHit,"zFirstHit/F");
         tree_purity_GenLepB->Branch("insidePFJet",&insidePFJet,"insidePFJet/F");
         tree_purity_GenLepB->Branch("ptGen",&ptGen,"ptGen/F");
         tree_purity_GenLepB->Branch("etaGen",&etaGen,"etaGen/F");
@@ -175,18 +152,18 @@ RecoToGenFiller::RecoToGenFiller(const TString & tag){
 	tree_purity_GenLepB->Branch("Vtx",&Vtx,"Vtx/I");
         tree_purity_GenLepB->Branch("pdgId",&pdgId,"pdgId/I");
 	tree_purity_GenLepB->Branch("tppdgId",&tppdgId,"tppdgId/I");
+
+//ElecTraining
 	tree_purity_GenLepB->Branch("EtotOvePin",&EtotOvePin,"EtotOvePin/F");
         tree_purity_GenLepB->Branch("EClusOverPout",&EClusOverPout,"EClusOverPout/F");
         tree_purity_GenLepB->Branch("fbrem",&fbrem,"fbrem/F");
         tree_purity_GenLepB->Branch("EBremOverDeltaP",&EBremOverDeltaP,"EBremOverDeltaP/F");
         tree_purity_GenLepB->Branch("logSigmaEtaEta",&logSigmaEtaEta,"logSigmaEtaEta/F");
         tree_purity_GenLepB->Branch("DeltaEtaTrackEcalSeed",&DeltaEtaTrackEcalSeed,"DeltaEtaTrackEcalSeed/F");
-        tree_purity_GenLepB->Branch("HOverE",&HOverE,"HOverE/F");
         tree_purity_GenLepB->Branch("gsfchi2",&Chi2GSF,"gsfchi2/F");
         tree_purity_GenLepB->Branch("kfchi2",&CHi2KF,"kfchi2/F");
         tree_purity_GenLepB->Branch("kfhits",&nHits,"kfhits/F");
         tree_purity_GenLepB->Branch("SigmaPtOverPt",&SigmaPtOverPt,"SigmaPtOverPt/F");
-        tree_purity_GenLepB->Branch("lnPt",&lnPt,"lnPt/F");
 	tree_purity_GenLepB->Branch("deta",&deta,"deta/F");
         tree_purity_GenLepB->Branch("dphi",&dphi,"dphi/F");
         tree_purity_GenLepB->Branch("detacalo",&detacalo,"detacalo/F");
@@ -200,13 +177,12 @@ RecoToGenFiller::RecoToGenFiller(const TString & tag){
         tree_purity_GenLepB->Branch("HoE",&HoE,"HoE/F");
         tree_purity_GenLepB->Branch("EoP",&EoP,"EoP/F");
         tree_purity_GenLepB->Branch("IoEmIoP",&IoEmIoP,"IoEmIoP/F");
-        tree_purity_GenLepB->Branch("eleEoPout",&eleEoPout,"eleEoPout/F");
-        tree_purity_GenLepB->Branch("d0",&d0,"d0/F");
         tree_purity_GenLepB->Branch("ip3d",&ip3d,"ip3d/F");
         tree_purity_GenLepB->Branch("ip3dSig",&ip3dSig,"ip3dSig/F");
 	tree_purity_GenLepB->Branch("mva_e_pi",&mva_e_pi,"mva_e_pi/F");
 	tree_purity_GenLepB->Branch("weight",&weight,"weight/F");
 	tree_purity_GenLepB->Branch("fromConversion",&fromConversion,"fromConversion/I");
+// BTagb training
         tree_purity_GenLepB->Branch("sip2d",&sip2d,"sip2d/F");
         tree_purity_GenLepB->Branch("sip3d",&sip3d,"sip3d/F");
         tree_purity_GenLepB->Branch("deltaR",&deltaR,"deltaR/F");
@@ -238,15 +214,7 @@ void RecoToGenFiller::initRecoToGenFillerObject(){
         ecalEnergy                  = -777.0;
         pIn                         = -777.0;
         pOut                        = -777.0;
-        EemPinRatio                 = -777.0;
-        EemPoutRatio                = -777.0;
-        GGE_p                      = -777.0;
-        GGE_pt                      = -777.0;
-        GGE_eta                     = -777.0;
-        GGE_phi                     = -777.0;
-        GGE_energy                  = -777.0;
         fbrem                       = -777.0;
-        dRGsfTrackElectron          = -777.0;
         insidePFJet                 = 0;
         ptGen                       =-777.0;
         etaGen                      =-777.0;
@@ -266,7 +234,6 @@ void RecoToGenFiller::initRecoToGenFillerObject(){
         pdgId=-777;
 	EtotOvePin=-777;
         EClusOverPout=-777;
-        fbrem=-777;
         EBremOverDeltaP=-777;;
         logSigmaEtaEta=-777;;
         DeltaEtaTrackEcalSeed=-777;;
@@ -275,7 +242,6 @@ void RecoToGenFiller::initRecoToGenFillerObject(){
         CHi2KF=-777;;
         nHits=-777;;
         SigmaPtOverPt=-777;;
-        lnPt=-777;;
 
 
 	deta=-777;
@@ -291,8 +257,6 @@ void RecoToGenFiller::initRecoToGenFillerObject(){
         HoE=-777;
         EoP=-777;
         IoEmIoP=-777;
-        eleEoPout=-777;
-        d0=-777;
 	ip3d=-777;
 	ip3dSig=-777;
 	mva_e_pi = -777.0;

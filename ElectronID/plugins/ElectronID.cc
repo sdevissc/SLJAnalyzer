@@ -344,8 +344,8 @@ void ElectronID::GEDGsfElecFiller(){
                 rtgf->RecoPt=gsf->pt();
                 rtgf->RecoEta=gsf->eta();
                 rtgf->RecoPhi=gsf->phi();
-                rtgf->EtotOvePin=gsf->eSuperClusterOverP();
-                rtgf->EClusOverPout=gsf->eEleClusterOverPout();
+                rtgf->EtotOvePin=1/(1+gsf->eSuperClusterOverP());
+                rtgf->EClusOverPout=1/(1+gsf->eEleClusterOverPout());
                 rtgf->fbrem=gsf->fbrem()>-1 ? gsf->fbrem():-1;
                 float etot=gsf->eSuperClusterOverP()*gsf->trackMomentumAtVtx().R();
                 float eEcal=gsf->eEleClusterOverPout()*gsf->trackMomentumAtEleClus().R();
@@ -412,8 +412,10 @@ void ElectronID::GEDGsfElecFiller(){
                 }
 
                 rtgf->nPV=pvc.size();
-
-                rtgf->tree_purity->Fill();
+		
+		if(fabs(rtgf->EBremOverDeltaP)<200){
+                	rtgf->tree_purity->Fill();
+		}
                 if(fabs(rtgf->pdgId)==11 && (rtgf->origin==4 || rtgf->origin==6)){
                         rtgf->weight=1;
                         rtgf->tree_purity_GenLepB->Fill();

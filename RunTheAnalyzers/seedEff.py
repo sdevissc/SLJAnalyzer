@@ -23,7 +23,10 @@ process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use
     fileNames = cms.untracked.vstring(
-        '/store/caf/user/sdevissc/QCD_RECODEBUG_TEST.root'
+        '/store/caf/user/sdevissc/TTbar_test1.root',
+        '/store/caf/user/sdevissc/TTbar_test2.root',
+        '/store/caf/user/sdevissc/TTbar_test3.root',
+        '/store/caf/user/sdevissc/TTbar_test4.root'
     )
 )
 
@@ -53,6 +56,14 @@ process.demo = cms.EDAnalyzer('SeedEfficiency',
  Verbose=cms.bool(True)
 
 )
+
+####################
+
+process.reconstruction_step = cms.Path(process.reconstruction_fromRECO)
+process.gedGsfElectronsTmp.PreSelectMVA = -2
+
+#####################
+
 
 from Configuration.AlCa.GlobalTag_condDBv2 import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, 'MCRUN2_72_V3', '')

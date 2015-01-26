@@ -155,7 +155,12 @@
   #include "DataFormats/MuonReco/interface/Muon.h"
   #include "DataFormats/MuonReco/interface/MuonFwd.h"
   #include "DataFormats/MuonReco/interface/MuonSelectors.h"
-//
+
+#include "DataFormats/BTauReco/interface/JetTag.h"
+#include "DataFormats/JetReco/interface/Jet.h"
+#include "SimDataFormats/JetMatching/interface/JetFlavour.h"
+#include "SimDataFormats/JetMatching/interface/JetFlavourMatching.h"
+
   #include <TLorentzVector.h>
 //
   #include "RecoToGenClass.h"
@@ -192,7 +197,7 @@ class ElectronID : public edm::EDAnalyzer {
       virtual void beginJob() override;
       virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
       virtual void endJob() override;
-
+      void BTagTreeFiller();
       bool trackFilter(const reco::TrackRef &track) const;
       virtual bool isInnerMost(const reco::Track track1, const reco::Track track2, bool& sameLayer);
       bool findMatch(const reco::Candidate& genCand, Handle<TrackingParticleCollection> TPCollectionH,reco::SimToRecoCollection q,reco::Track& track,int& indexTrack,float& dR,float& sharedHits,RefToBase<Track> &trRefToBase);
@@ -200,12 +205,17 @@ class ElectronID : public edm::EDAnalyzer {
       bool  isaBhadron( int );
       bool  isaDhadron( int );
       bool  isaV( int );
+      float GetWeight(reco::GsfElectron);
+      int GetPtBin(float);
+      int GetEtaBin(float);	
       int GetOrigin(reco::GenParticle&);
+      float boostedPPar(const math::XYZVector&, const math::XYZVector& );
+      template <class TYPE,class TYPE2> reco::SoftLeptonProperties fillLeptonProperties(TYPE lepton,TYPE2 track, const reco::Jet &jet);
       bool UseRECO, Verbose;
-      InputTag PVerTag,gedgsfElectronTag_,genParticleTag_,TrackTag_,TrackingParticleTag_,allConversionsTag,offlineBeamSpotTag;
+      InputTag PVerTag,gedgsfElectronTag_,genParticleTag_,TrackTag_,TrackingParticleTag_,allConversionsTag,offlineBeamSpotTag,JetsTag,JetFTag;
       float maxLIP;
       int minHits;
-      RecoToGenFiller *rtgf;
+      RecoToGenFiller *rtgf,*pfinjet;
       Handle<reco::VertexCollection> PrimaryVetices;
       ESHandle<TransientTrackBuilder> builder;
       Handle<edm::View<reco::Track> > theTrackColl;
@@ -222,10 +232,19 @@ class ElectronID : public edm::EDAnalyzer {
       GenParticleCollection gpc ;
       reco::VertexCollection pvc;
       bool goodvertex;
-      reco::GsfPFRecTrackCollection  gsfpfTk;
       std::vector<TransientTrack> tts;
+      edm::Handle<reco::PFJetCollection> PFJets;
+      edm::Handle<reco::JetFlavourMatchingCollection> JetMC;
+	
+      struct JetRefCompare :
+        public std::binary_function<edm::RefToBase<reco::Jet>, edm::RefToBase<reco::Jet>, bool> {
+                inline bool operator() (const edm::RefToBase<reco::Jet> &j1, const edm::RefToBase<reco::Jet> &j2) const { return j1.id() < j2.id() || (j1.id() == j2.id() && j1.key() < j2.key()); }
+        };
+        typedef std::map<edm::RefToBase<reco::Jet>, unsigned int, JetRefCompare> FlavourMap;
 
-      // ----------member data ---------------------------
+      FlavourMap flavours;
+      TFile *weightFile;
+      TH2F *weightMap;
 };
 
 //
@@ -249,12 +268,19 @@ ElectronID::ElectronID(const edm::ParameterSet& iConfig):
         TrackingParticleTag_(iConfig.getParameter<edm::InputTag>("TrackingParticleTag")),
 	allConversionsTag(iConfig.getParameter<edm::InputTag>("conversionTag")),
 	offlineBeamSpotTag(iConfig.getParameter<edm::InputTag>("beamSpotTag")),
+	JetsTag(iConfig.getParameter<edm::InputTag>("JetsTag") ),
+        JetFTag(iConfig.getParameter<edm::InputTag>("JetFTag") ),
 	maxLIP(iConfig.getParameter<double>("maximumLongitudinalImpactParameter")),
         minHits(iConfig.getParameter<unsigned int>("minHits"))
 {
         std::cout<<"in constr"<<std::endl;
         rtgf= new RecoToGenFiller("GEDGSF");
         std::cout<<"in constr"<<std::endl;
+	string path_weightFile;
+        path_weightFile = edm::FileInPath ("SLJAnalyzer/ElectronID/data/weightFile.root").fullPath();
+        weightFile=new TFile(path_weightFile.c_str());
+        TKey *key = (TKey*)gDirectory->GetListOfKeys()->FindObject("div");
+        weightMap=(TH2F*)key->ReadObj();
 
 }
 
@@ -285,7 +311,8 @@ ElectronID::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         iEvent.getByLabel(gedgsfElectronTag_, gedgsfCandidates);
 	iEvent.getByLabel(allConversionsTag, hConversions);
 	iEvent.getByLabel(offlineBeamSpotTag, beamSpot);
-
+	iEvent.getByLabel(JetsTag, PFJets);
+  	iEvent.getByLabel(JetFTag, JetMC);
         std::cout<<"test0"<<std::endl;
         if(!PrimaryVetices.isValid() || PrimaryVetices->empty()) return;
         vertex=&PrimaryVetices->front();
@@ -314,6 +341,10 @@ ElectronID::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         const View<Track> tC = *(theTrackColl.product());
         std::cout<<"test2"<<std::endl;
         GEDGsfElecFiller();
+        for(reco::JetFlavourMatchingCollection::const_iterator iter=JetMC->begin(); iter!=JetMC->end(); iter++) {
+          flavours.insert(FlavourMap::value_type(iter->first, std::abs(iter->second.getFlavour())));
+        }
+
 }
 
 
@@ -341,11 +372,12 @@ void ElectronID::GEDGsfElecFiller(){
                 GsfElectronRef elref( gedgsfCandidates, u);
 //                cout<<"electron pt="<<gsf->pt()<<" MVASoftOutput:"<< (mvasoft)[elref]<<endl;
 //                rtgf->mva_e_pi=(mvasoft)[elref];
+		rtgf->mva_e_pi=gsf->mva_e_pi();
                 rtgf->RecoPt=gsf->pt();
                 rtgf->RecoEta=gsf->eta();
                 rtgf->RecoPhi=gsf->phi();
-                rtgf->EtotOvePin=1/(1+gsf->eSuperClusterOverP());
-                rtgf->EClusOverPout=1/(1+gsf->eEleClusterOverPout());
+                rtgf->EtotOvePin=gsf->eSuperClusterOverP();
+                rtgf->EClusOverPout=gsf->eEleClusterOverPout();
                 rtgf->fbrem=gsf->fbrem()>-1 ? gsf->fbrem():-1;
                 float etot=gsf->eSuperClusterOverP()*gsf->trackMomentumAtVtx().R();
                 float eEcal=gsf->eEleClusterOverPout()*gsf->trackMomentumAtEleClus().R();
@@ -385,9 +417,9 @@ void ElectronID::GEDGsfElecFiller(){
                 bool fromConv=ConversionTools::hasMatchedConversion((*gsf),hConversions,beamSpot->position());
                 rtgf->fromConversion = fromConv ? 1:0;
 /*                std::cout<<"The weight is "<<GetWeight((*gsf))<<endl;
+*/
 
-
-                rtgf->weight          = GetWeight((*gsf));*/
+                rtgf->weight          = GetWeight((*gsf));
                 if (gsf->gsfTrack().isNonnull()) {
                         rtgf->d0 = (-1.0)*gsf->gsfTrack()->dxy(pvc[0].position());
                 } else if (gsf->closestCtfTrackRef().isNonnull()) {
@@ -413,32 +445,29 @@ void ElectronID::GEDGsfElecFiller(){
 
                 rtgf->nPV=pvc.size();
 		
-		if(fabs(rtgf->EBremOverDeltaP)<200){
-                	rtgf->tree_purity->Fill();
-		}
+		if(fabs(rtgf->EBremOverDeltaP)>200 || rtgf->RecoPt<2 || fabs(rtgf->RecoEta)>2.4)continue;
+                rtgf->tree_purity->Fill();
+		
                 if(fabs(rtgf->pdgId)==11 && (rtgf->origin==4 || rtgf->origin==6)){
                         rtgf->weight=1;
                         rtgf->tree_purity_GenLepB->Fill();
                         cout<<"An gen elec from B"<<endl;
                 }
-                else if (fabs(rtgf->pdgId)==211 && (rtgf->origin>0)){
-                        rtgf->tree_purity_GenPi->Fill();
+		else if(fabs(rtgf->pdgId)==11 && rtgf->origin==0){
+                        rtgf->weight=1;
+                        rtgf->tree_purity_GenLepV->Fill();
+                        cout<<"An gen elec from B"<<endl;
+                }
+		else if (fabs(rtgf->tppdgId)>100){
+                        rtgf->tree_purity_Hadrons->Fill();
                         cout<<"An gen pion from B"<<endl;
                 }
-                else if (rtgf->Vtx==1){
-                        rtgf->tree_purity_GenX->Fill();
-                        cout<<"An gen X"<<endl;
-                }
                 else if (fabs(rtgf->tppdgId)==11){
-                        rtgf->tree_purity_NonGenElec->Fill();
+                        rtgf->tree_purity_OtherElec->Fill();
                         cout<<"An non gen elec"<<endl;
                 }
-                else if (fabs(rtgf->tppdgId)==211){
-                        rtgf->tree_purity_NonGenPi->Fill();
-                        cout<<"An non gen pion"<<endl;
-                }
                 else {
-                        rtgf->tree_purity_NonGenX->Fill();
+                        rtgf->tree_purity_OtherX->Fill();
                         cout<<"An non gen X"<<endl;
                 }
 
@@ -453,6 +482,130 @@ void ElectronID::GEDGsfElecFiller(){
         }
 }
 
+
+void ElectronID::BTagTreeFiller(){
+        for(reco::PFJetCollection::const_iterator jet=PFJets->begin(); jet!=PFJets->end(); ++jet) {
+                 if(jet->pt()<20 || fabs(jet->eta())>2.4)continue;
+                 int index=jet-PFJets->begin();
+                 edm::RefToBase<reco::Jet> jetRef(edm::Ref<reco::PFJetCollection>(PFJets, index));
+                 std::vector<reco::PFCandidatePtr> PFJetConst=jet->getPFConstituents();
+                 for(std::vector<reco::PFCandidatePtr>::const_iterator ipfc=PFJetConst.begin(); ipfc!=PFJetConst.end(); ++ipfc) {
+                         if((*ipfc)->particleId()!=2 && (*ipfc)->particleId()!=3)continue;
+                         const reco::PFCandidatePtr pfc = *ipfc;
+                         if(flavours.find(jetRef)!=flavours.end()) {
+                                 pfinjet->fl=flavours[jetRef];
+                         }
+                         pfinjet->initRecoToGenFillerObject();
+                         pfinjet->RecoPt=pfc->pt();
+                         pfinjet->type=pfc->particleId();
+                         pfinjet->RecoEta=pfc->eta();
+                         pfinjet->mva_e_pi=pfc->mva_e_pi();
+                         RefToBase<Track> tkRef;
+                         if(pfc->particleId()==2){
+                                        if(pfc->gsfTrackRef().isNull()) continue;
+                                        const reco::HitPattern& hitPattern = pfc->gsfTrackRef().get()->hitPattern();
+                                        uint32_t hit = hitPattern.getHitPattern(HitPattern::TRACK_HITS,0);
+                                        bool hitCond1=hitPattern.validHitFilter(hit);
+                                        bool hitCond2=hitPattern.pixelBarrelHitFilter(hit);
+                                        bool hitCond3=hitPattern.getLayer(hit) < 3;
+                                        bool hitCond4=hitPattern.pixelEndcapHitFilter(hit);
+                                        bool hitCondition= !(hitCond1 && ( (hitCond2 && hitCond3) || hitCond4));
+                                        if(hitCondition || pfc->gsfTrackRef().isNull()) continue;
+                                        reco::SoftLeptonProperties prop=fillLeptonProperties(pfc->gsfElectronRef().get(), pfc->gsfTrackRef().get(),(*jet));
+                                        pfinjet->sip2d=prop.sip2d;
+                                        pfinjet->sip3d=prop.sip3d;
+                                        pfinjet->deltaR=prop.deltaR;
+                                        pfinjet->ptRel=prop.ptRel;
+                                        pfinjet->etaRel=prop.etaRel;
+                                        pfinjet->ratio=prop.ratio;
+                                        pfinjet->ratioRel=prop.ratioRel;
+                                        bool fromConv=ConversionTools::hasMatchedConversion((*pfc->gsfElectronRef().get()),hConversions,beamSpot->position());
+                                        pfinjet->fromConversion = fromConv ? 1:0;
+                                        tkRef  = RefToBase<Track>(pfc->gsfElectronRef().get()->gsfTrack() );
+                                        pfinjet->weight = GetWeight((*pfc->gsfElectronRef().get()));
+                                        pfinjet->tree_purity->Fill();
+                                        if(fabs(pfinjet->pdgId)==11 && (pfinjet->origin==4 || pfinjet->origin==6) && fabs(pfinjet->fl)==5){
+                                                pfinjet->weight=1;
+                                                pfinjet->tree_purity_GenLepB->Fill();
+                                        }
+                                        else if (!fromConv){
+                                                pfinjet->tree_purity_Hadrons->Fill();
+                                        }
+
+                                }
+                                if(theRecoToSimColl.find(tkRef) != theRecoToSimColl.end()){
+                                        pfinjet->tppdgId=theRecoToSimColl[tkRef].begin()->first->pdgId();
+                                        TrackingParticle::genp_iterator j, b = theRecoToSimColl[tkRef].begin()->first->genParticle_begin(), e = theRecoToSimColl[tkRef].begin()->first->genParticle_end();
+                                        for( j = b; j != e; ++ j ) {
+                                                const reco::GenParticle * p = j->get();
+                                                reco::GenParticle *ncp=(reco::GenParticle*)p;
+                                                pfinjet->Vtx=1;
+                                                pfinjet->pdgId=ncp->pdgId();
+                                                pfinjet->origin=GetOrigin(*ncp);
+                                                pfinjet->ptGen=ncp->pt();
+                                                pfinjet->pGen=ncp->p();
+                                                pfinjet->etaGen=ncp->eta();
+                                        }
+                               }
+                       }
+             }
+}
+
+
+template <class TYPE,class TYPE2> reco::SoftLeptonProperties ElectronID::fillLeptonProperties(TYPE lepton, TYPE2 track,const reco::Jet &jet) {
+        reco::SoftLeptonProperties prop;
+        reco::TransientTrack transientTrack=transientTrackBuilder->build(track);
+        prop.sip2d    = IPTools::signedTransverseImpactParameter(transientTrack, GlobalVector(jet.px(), jet.py(), jet.pz()), *vertex).second.significance();
+        prop.sip3d    = IPTools::signedImpactParameter3D(transientTrack, GlobalVector(jet.px(), jet.py(), jet.pz()), *vertex).second.significance();
+        prop.deltaR   = deltaR(jet,(*lepton));
+        prop.ptRel    = ( (jet.p4().Vect()-lepton->p4().Vect()).Cross(lepton->p4().Vect()) ).R() / jet.p4().Vect().R(); // | (Pj-Pu) X Pu | / | Pj |
+        float mag = lepton->p4().Vect().R()*jet.p4().Vect().R();
+        float dot = lepton->p4().Dot(jet.p4());
+        prop.etaRel   = -log((mag - dot)/(mag + dot)) / 2.;
+        prop.ratio    = lepton->pt() / jet.pt();
+        prop.ratioRel = lepton->p4().Dot(jet.p4()) / jet.p4().Vect().Mag2();
+        prop.p0Par =  boostedPPar(lepton->momentum(), jet.momentum());
+        return prop;
+}
+
+float ElectronID::boostedPPar(const math::XYZVector& vector, const math::XYZVector& axis) {
+        static const double lepton_mass = 0.00; // assume a massless (ultrarelativistic) lepton
+        static const double jet_mass = 5.279; // use B±/B0 mass as the jet rest mass [PDG 2007 updates]
+        ROOT::Math::LorentzVector<ROOT::Math::PxPyPzM4D<double> > lepton(vector.Dot(axis) / axis.r(), ROOT::Math::VectorUtil::Perp(vector, axis), 0., lepton_mass);
+        ROOT::Math::LorentzVector<ROOT::Math::PxPyPzM4D<double> > jet( axis.r(), 0., 0., jet_mass );
+        ROOT::Math::BoostX boost( -jet.Beta() );
+        return boost(lepton).x();
+}
+
+float ElectronID::GetWeight(reco::GsfElectron ele)
+{
+        if(ele.pt()>200 || fabs(ele.eta())>2.5)return 1;
+        int xbin=-1,ybin=-1;
+        xbin=GetPtBin(ele.pt());
+        ybin=GetEtaBin(ele.eta());
+        std::cout<<"pt="<<ele.pt()<<" eta="<<ele.eta()<<" ==> bin x="<<xbin<<" biny="<<ybin<<" ===> weight="<<weightMap->GetBinContent(xbin,ybin)<<std::endl;
+        return weightMap->GetBinContent(xbin,ybin)>0 ? weightMap->GetBinContent(xbin,ybin):1;
+}
+
+
+int ElectronID::GetPtBin(float pt){
+
+        float Xaxis[9]={2,5,10,15,25,50,75,100,200};
+        int result=-1;
+        for(int i=1;i<9;i++){
+                if(pt>Xaxis[i-1] && pt<Xaxis[i])result=i;
+        }
+        return result;
+}
+int ElectronID::GetEtaBin(float eta){
+
+        float Yaxis[9]={-2.5,-1.7,-1.3,-0.5,0,0.5,1.3,1.7,2.5};
+        int result=-1;
+        for(int i=1;i<9;i++){
+                if(eta>Yaxis[i-1] && eta<Yaxis[i])result=i;
+        }
+        return result;
+}
 
 
 bool ElectronID::isInnerMost(const reco::Track track1, const reco::Track track2, bool& sameLayer) {

@@ -50,11 +50,10 @@ class RecoToGenFiller{
 	inline void WriteInFileAndCloseIt();
 	TTree *tree_purity;
 	TTree *tree_purity_GenLepB;
-	TTree *tree_purity_GenPi;
-	TTree *tree_purity_GenX;
-	TTree *tree_purity_NonGenElec;
-        TTree *tree_purity_NonGenPi;
-        TTree *tree_purity_NonGenX;
+	TTree *tree_purity_GenLepV;
+	TTree *tree_purity_Hadrons;
+	TTree *tree_purity_OtherElec;
+        TTree *tree_purity_OtherX;
 	TFile *f;
 	int origin;
         int nPV;
@@ -190,18 +189,17 @@ RecoToGenFiller::RecoToGenFiller(const TString & tag){
         tree_purity_GenLepB->Branch("ratio",&ratio,"ratio/F");
         tree_purity_GenLepB->Branch("ratioRel",&ratioRel,"ratioRel/F");
 	tree_purity_GenLepB->Branch("fl",&fl,"fl/I");
-	tree_purity_GenPi=(TTree*)tree_purity_GenLepB->CloneTree();
-	tree_purity_GenX=(TTree*)tree_purity_GenLepB->CloneTree();
-	tree_purity_NonGenElec=(TTree*)tree_purity_GenLepB->CloneTree();
-	tree_purity_NonGenPi=(TTree*)tree_purity_GenLepB->CloneTree();
-	tree_purity_NonGenX=(TTree*)tree_purity_GenLepB->CloneTree();
+
+	tree_purity_GenLepV=(TTree*)tree_purity_GenLepB->CloneTree();
+	tree_purity_Hadrons=(TTree*)tree_purity_GenLepB->CloneTree();
+	tree_purity_OtherElec=(TTree*)tree_purity_GenLepB->CloneTree();
+	tree_purity_OtherX=(TTree*)tree_purity_GenLepB->CloneTree();
         tree_purity=(TTree*)tree_purity_GenLepB->CloneTree();
 
-	tree_purity_GenPi->SetName("tree_purity_GenPi");
-        tree_purity_GenX->SetName("tree_purity_GenX");
-        tree_purity_NonGenElec->SetName("tree_purity_NonGenElec");
-        tree_purity_NonGenPi->SetName("tree_purity_NonGenPi");
-        tree_purity_NonGenX->SetName("tree_purity_NonGenX");	
+	tree_purity_GenLepV->SetName("tree_purity_GenLepV");
+        tree_purity_Hadrons->SetName("tree_purity_Hadrons");
+        tree_purity_OtherElec->SetName("tree_purity_OtherElec");
+        tree_purity_OtherX->SetName("tree_purity_OtherX");
         tree_purity->SetName("tree_purity");
 	
 }
@@ -277,11 +275,10 @@ void RecoToGenFiller::WriteInFileAndCloseIt(){
 	f->cd();
 	tree_purity->Write();
 	tree_purity_GenLepB->Write();
-	tree_purity_GenPi->Write();
-        tree_purity_GenX->Write();
-        tree_purity_NonGenElec->Write();
-        tree_purity_NonGenPi->Write();
-        tree_purity_NonGenX->Write();
+	tree_purity_GenLepV->Write();
+	tree_purity_Hadrons->Write();
+        tree_purity_OtherElec->Write();
+        tree_purity_OtherX->Write();
 	f->Close();
 }
 RecoToGenFiller::~RecoToGenFiller(){};

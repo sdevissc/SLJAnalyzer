@@ -42,11 +42,17 @@ process.RECOoutput = cms.OutputModule("PoolOutputModule",
 )
 
 
+process.load("PhysicsTools.JetMCAlgos.CaloJetsMCFlavour_cfi")
+process.AK4PFbyRef=process.AK4byRef.clone(jets="ak5PFJets")
+process.AK4PFbyValAlgo=process.AK4byValAlgo.clone(srcByReference="AK4PFbyRef")
+
+
 process.demo = cms.EDAnalyzer('ElectronID',
  genParticleTag=cms.InputTag("genParticles"),
  gedgsfElectronTag= cms.InputTag("gedGsfElectrons"),
  GenPTag=cms.InputTag("genParticles"),
  JetsTag=cms.InputTag("ak5PFJets"),
+ JetFTag=cms.InputTag("AK4PFbyValAlgo"),
  PVerTag=cms.InputTag("offlinePrimaryVertices"),
  simtracksTag = cms.InputTag("g4SimHits"),
  tracksTag = cms.InputTag("electronGsfTracks"),
@@ -60,6 +66,13 @@ process.demo = cms.EDAnalyzer('ElectronID',
 
 )
 
+####################
+
+process.reconstruction_step = cms.Path(process.reconstruction_fromRECO)
+process.gedGsfElectronsTmp.PreSelectMVA = -2
+
+#####################
+
 from Configuration.AlCa.GlobalTag_condDBv2 import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, 'MCRUN2_72_V3', '')
 
@@ -70,6 +83,11 @@ process.load("SimTracker.TrackAssociation.quickTrackAssociatorByHits_cfi")
 process.quickTrackAssociatorByHits.useClusterTPAssociation = cms.bool(True)
 process.load("SimTracker.TrackerHitAssociation.clusterTpAssociationProducer_cfi")
 
-process.p = cms.Path(process.demo)
-process.schedule = cms.Schedule(process.p)
+process.p = cms.Path(
+  process.myPartons *
+  process.AK4PFbyRef *
+  process.AK4PFbyValAlgo *
+  process.AK4Flavour *
+  process.demo)
+process.schedule = cms.Schedule(process.reconstruction_step,process.p)
 

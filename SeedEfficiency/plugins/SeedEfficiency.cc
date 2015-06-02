@@ -28,7 +28,7 @@
 #include "FWCore/Framework/interface/MakerMacros.h"
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-
+#include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/TrackReco/interface/Track.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
@@ -55,6 +55,9 @@
 #include "SimTracker/TrackAssociation/interface/QuickTrackAssociatorByHits.h"
 #include "SimTracker/TrackAssociation/interface/TrackAssociatorByChi2.h"
 #include "SimTracker/TrackAssociation/interface/QuickTrackAssociatorByHits.h"
+#include "DataFormats/EgammaReco/interface/ElectronSeedFwd.h"
+#include "DataFormats/EgammaReco/interface/ElectronSeed.h"
+
 //
 // class declaration
 //
@@ -95,6 +98,8 @@ class SeedEfficiency : public edm::EDAnalyzer {
       Handle<GenParticleCollection> GPC;
       Handle<reco::GsfElectronCollection> gedgsfCandidates;
       Handle<reco::GsfPFRecTrackCollection> gsfPfRecTracksCollection ;
+      Handle<reco::GsfTrackCollection> gTCol;
+
       const reco::Vertex* vertex;	
       int nPV;
       const TransientTrackBuilder* transientTrackBuilder;
@@ -104,6 +109,7 @@ class SeedEfficiency : public edm::EDAnalyzer {
       reco::VertexCollection pvc;
       bool goodvertex;
       reco::GsfPFRecTrackCollection  gsfpfTk;
+      reco::GsfTrackCollection gsftc;
 };
 	
 //
@@ -153,47 +159,38 @@ void
 SeedEfficiency::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
    using namespace edm;
-  std::cout<<"getbylabel 1"<<std::endl;
         iEvent.getByLabel(PVerTag, PrimaryVetices);
         iEvent.getByLabel(genParticleTag_, GPC);
         iEvent.getByLabel(gedgsfElectronTag_, gedgsfCandidates);
         iEvent.getByLabel("pfTrackElec",gsfPfRecTracksCollection);
+	iEvent.getByLabel( "electronGsfTracks", gTCol);
 
-	std::cout<<"test0"<<std::endl;
         if(!PrimaryVetices.isValid() || PrimaryVetices->empty()) return;
         vertex=&PrimaryVetices->front();
         nPV=PrimaryVetices->size();
-        std::cout<<"test1"<<std::endl;
 	iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder", builder);
         transientTrackBuilder=builder.product();
-	std::cout<<"test15"<<std::endl;
 	const TrackAssociatorBase* theAssociatorByHits(NULL);
-	std::cout<<"test16"<<std::endl;
         if(UseRECO){
-		std::cout<<"UR0"<<std::endl;
 		iEvent.getByLabel(TrackTag_, theTrackColl);
                 iEvent.getByLabel(TrackingParticleTag_,theTrackingPartColl);
                 iSetup.get<TrackAssociatorRecord>().get("quickTrackAssociatorByHits", theHitsAssociator);
                 theAssociatorByHits = (TrackAssociatorBase*)theHitsAssociator.product();
-		std::cout<<"UR05"<<std::endl;
                 theSimToRecoColl=theAssociatorByHits->associateSimToReco(theTrackColl, theTrackingPartColl, &iEvent, &iSetup);
-		std::cout<<"UR1"<<std::endl;
         }
 	gedgsfCollection = *(gedgsfCandidates.product());
         //Loading the genParticles
         gpc = *(GPC.product());
         pvc = *(PrimaryVetices);
-	std::cout<<"test17"<<std::endl;
+	gsftc=*(gTCol.product());
         goodvertex=!pvc.empty()?true:false;
         if(goodvertex)vertex=&pvc.front();
         const View<Track> tC = *(theTrackColl.product());
         gsfpfTk=*(gsfPfRecTracksCollection.product());
-        std::cout<<"test2"<<std::endl;        
 	EffEstimator();
 }
 
 void SeedEfficiency::EffEstimator(){
-        std::cout<<"test00: gpc size is "<<gpc.size()<<std::endl;
         for (int j = 0 ; j < (int)gpc.size(); ++j)
         {
                 gtrf->initGenToRecoFillerObject();
@@ -203,7 +200,7 @@ void SeedEfficiency::EffEstimator(){
                 if(isFinal && isElecOrPionOrKaon && isKineOk){
                         gtrf->pdgId=gpc[j].pdgId();
                         gtrf->origin=GetOrigin(gpc[j]);
-			std::cout<<"We have an electron or pion or kaon with pdgId="<<gtrf->pdgId<<" origin="<<gtrf->origin<<" pt="<<gpc[j].pt()<<std::endl;
+			if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"We have an electron or pion or kaon with pdgId="<<gtrf->pdgId<<" origin="<<gtrf->origin<<" pt="<<gpc[j].pt()<<std::endl;
                         gtrf->ptGen=gpc[j].pt();
                         gtrf->etaGen=gpc[j].eta();
                         gtrf->phiGen=gpc[j].phi();
@@ -214,30 +211,65 @@ void SeedEfficiency::EffEstimator(){
                         float dR = 100;
                         int indexTrack;
                         RefToBase<Track> tr;
-			std::cout<<"Checking result from findMatch"<<std::endl;
+			if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"Checking result from findMatch"<<std::endl;
                         bool result = findMatch(gpc[j], theTrackingPartColl, theSimToRecoColl,track, indexTrack, dR, sharedHits,tr);
                         if ( result ) {
-				std::cout<<"-->matched"<<std::endl;
                                 gtrf->gen_match_ = 1;
                                 gtrf->sharedHits=sharedHits;
-				std::cout<<"-->matched with "<<gtrf->sharedHits<<" shared hits"<<std::endl;
+				if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"-->matched with "<<gtrf->sharedHits<<" shared hits"<<std::endl;
                         }
                         else          gtrf->gen_match_ = 0;
                         gtrf->inRecoJet=inRecoJet;
-			std::cout<<"now on gsfpfrectracks("<<gsfpfTk.size()<<" in total)"<<std::endl;
+			if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"Now checking the matching with gsfpfrectracks("<<gsfpfTk.size()<<" in total)"<<std::endl;
                         for (int u = 0 ; u < (int)gsfpfTk.size(); ++u)
                         {
                                 if(tr.get()==gsfpfTk[u].gsfTrackRef().get()){
-					std::cout<<"-->TP matched with a seed"<<std::endl;
+					if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"-->TRACKER DRIVEN SEEDED"<<std::endl;
                                         gtrf->isMatchedWithASeed=1;
                                         gtrf->gsftrkSeedPt=gsfpfTk[u].gsfTrackRef().get()->pt();
                                         gtrf->gsftrkSeedEta=gsfpfTk[u].gsfTrackRef().get()->eta();
                                         gtrf->gsftrkSeedPhi=gsfpfTk[u].gsfTrackRef().get()->phi();
                                 }
+				if(deltaR(gpc[j].eta(), gpc[j].phi(), gsftc[u].eta(), gsftc[u].phi())<0.01){
+                                        if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"-->TRACKER DRIVEN SEEDED DeltaRMatched"<<std::endl;
+                                        gtrf->isDeltaRMatchedWithASeed=1;
+                                }
+
                         }
+			if(fabs(gpc[j].pdgId())==11 && isKineOk)cout<<"Now checking the ecalSeeding("<<gsftc.size()<<" in total)"<<endl;
+			for (int u = 0 ; u < (int)gsftc.size(); ++u)
+                        {
+				if(deltaR(gpc[j].eta(), gpc[j].phi(), gsftc[u].eta(), gsftc[u].phi())<0.01){
+                                        const GsfTrackRef trackRef = edm::Ref<GsfTrackCollection>(&gsftc, u);
+                                        if(fabs(gpc[j].pdgId())==11 && isKineOk)cout<<"-->Got a GEN-RECO deltaR of 0 -->Found it"<<endl;
+                                        reco::ElectronSeedRef seedRef=  trackRef->seedRef().castTo<reco::ElectronSeedRef>();
+                                        if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"----> DeltaR match: seedRef.isAvailable() ?"<<seedRef.isAvailable()<<std::endl;
+                                        if(seedRef.isAvailable() && seedRef->isEcalDriven()) {
+                                                gtrf->isDeltaREcalDrivenSeeded=1;
+                                                if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"----> ECAL-DRIVEN SEEDED"<<std::endl;
+                                        }
+                                }
+				if(!tr) continue;
+				if(deltaR(tr.get()->eta(), tr.get()->phi(), gsftc[u].eta(), gsftc[u].phi())==0){
+					const GsfTrackRef trackRef = edm::Ref<GsfTrackCollection>(&gsftc, u);
+                                        if(fabs(gpc[j].pdgId())==11 && isKineOk)cout<<"-->Got a TT-RECO deltaR of 0 -->Found it"<<endl;
+					reco::ElectronSeedRef seedRef=  trackRef->seedRef().castTo<reco::ElectronSeedRef>();
+					if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"----> seedRef.isAvailable() ?"<<seedRef.isAvailable()<<std::endl;
+                                	if(seedRef.isAvailable() && seedRef->isEcalDriven()) {
+						gtrf->isEcalDrivenSeeded=1;
+						if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"----> ECAL-DRIVEN SEEDED"<<std::endl;
+					}
+                                }
+				
+                        }
+			// Trial with no TrackingTruth Info, just DeltaR
+			
+						
+
+
                         gtrf->nPV=pvc.size();
                         gtrf->tree_efficiency->Fill();
-                        cout<<"#####################################################################"<<endl;
+                        if(fabs(gpc[j].pdgId())==11 && isKineOk)cout<<"#####################################################################"<<endl;
                 }
          }
 }
@@ -379,7 +411,7 @@ bool SeedEfficiency::findMatch(const reco::Candidate& genCand,
 
   const TrackingParticleCollection tPC = *(theTrackingPartColl.product());
   if ( tPC.size() == 0 ) return false;
-  cout<<"in FM: playing with "<<tPC.size()<<" trackingParticles"<<endl;
+//  cout<<"in FM: playing with "<<tPC.size()<<" trackingParticles"<<endl;
   unsigned int nTPs = tPC.size();
   for(unsigned int iTP = 0; iTP < nTPs; ++iTP) {
     const TrackingParticle& lTP(tPC[iTP]);
@@ -387,11 +419,11 @@ bool SeedEfficiency::findMatch(const reco::Candidate& genCand,
     float dphi = acos(cos(lTP.phi() - genCand.phi()));
     dR = sqrt(deta*deta + dphi*dphi);
     if ( lTP.pdgId() != genCand.pdgId() || dR > 0.05 ) continue;
-	cout<<"in FM3: found a TP close enough to the gen particle "<<lTP.pdgId()<<" "<<genCand.pdgId()<<" "<<dR<<endl;
+//	cout<<"in FM3: found a TP close enough to the gen particle "<<lTP.pdgId()<<" "<<genCand.pdgId()<<" "<<dR<<endl;
     edm::Ref<TrackingParticleCollection> tp(theTrackingPartColl, iTP);
     try {
         std::vector<std::pair<RefToBase<Track>, double> > trackV = q[tp];
-	cout<<"in FM3: "<<trackV.size()<<endl;
+//	cout<<"in FM3: "<<trackV.size()<<endl;
       if ( trackV.size() == 1 ) {
         std::vector<std::pair<RefToBase<Track>, double> >::const_iterator it = trackV.begin();
         RefToBase<Track> tr = it->first;

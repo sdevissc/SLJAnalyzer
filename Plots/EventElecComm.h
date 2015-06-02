@@ -54,6 +54,7 @@ Int_t		pdgId;
    Float_t         gsftrkSeedPhi;
    Int_t           inRecoJet;
    Int_t           isMatchedWithASeed;
+   Int_t 	   isEcalDrivenSeeded;
    Float_t         gedgsfElecPt;
    Float_t         gedgsfElecEta;
    Float_t         gedgsfElecPhi;
@@ -94,6 +95,7 @@ TBranch        *b_origin;   //!
    TBranch        *b_gsftrkSeedPhi;   //!
    TBranch        *b_inRecoJet;   //!
    TBranch        *b_isMatchedWithASeed;   //!
+   TBranch 	  *b_isEcalDrivenSeeded;
    TBranch        *b_gedgsfElecPt;   //!
    TBranch        *b_gedgsfElecEta;   //!
    TBranch        *b_gedgsfElecPhi;   //!
@@ -223,6 +225,7 @@ void EventElecComm::Init(TTree *tree)
    fChain->SetBranchAddress("gsftrkSeedPhi", &gsftrkSeedPhi, &b_gsftrkSeedPhi);
    fChain->SetBranchAddress("inRecoJet", &inRecoJet, &b_inRecoJet);
    fChain->SetBranchAddress("isMatchedWithASeed", &isMatchedWithASeed, &b_isMatchedWithASeed);
+   fChain->SetBranchAddress("isEcalDrivenSeeded",&isEcalDrivenSeeded,&b_isEcalDrivenSeeded);
    fChain->SetBranchAddress("gedgsfElecPt", &gedgsfElecPt, &b_gedgsfElecPt);
    fChain->SetBranchAddress("gedgsfElecEta", &gedgsfElecEta, &b_gedgsfElecEta);
    fChain->SetBranchAddress("gedgsfElecPhi", &gedgsfElecPhi, &b_gedgsfElecPhi);

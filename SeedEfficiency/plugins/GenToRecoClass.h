@@ -50,6 +50,9 @@ class GenToRecoFiller{
         float gedgsfElecPhi;
 	int inRecoJet;
 	int isMatchedWithASeed;
+	int isEcalDrivenSeeded;
+	int isDeltaRMatchedWithASeed;
+        int isDeltaREcalDrivenSeeded;
 	int isMatchedWithAGedGsfElec;
 	int isMatchedWithAPFElec;
 	float mva_e_pi;	
@@ -95,6 +98,9 @@ GenToRecoFiller::GenToRecoFiller(const TString & tag){
         tree_efficiency->Branch("gsftrkSeedPhi",&gsftrkSeedPhi,"gsftrkSeedPhi/F");
 	tree_efficiency->Branch("inRecoJet",&inRecoJet,"inRecoJet/I");
 	tree_efficiency->Branch("isMatchedWithASeed",&isMatchedWithASeed,"isMatchedWithASeed/I");
+	tree_efficiency->Branch("isEcalDrivenSeeded",&isEcalDrivenSeeded,"isEcalDrivenSeeded/I");
+        tree_efficiency->Branch("isDeltaRMatchedWithASeed",&isDeltaRMatchedWithASeed,"isDeltaRMatchedWithASeed/I");
+        tree_efficiency->Branch("isDeltaREcalDrivenSeeded",&isDeltaREcalDrivenSeeded,"isDeltaREcalDrivenSeeded/I");
 	tree_efficiency->Branch("gedgsfElecPt",&gedgsfElecPt,"gedgsfElecPt/F");
         tree_efficiency->Branch("gedgsfElecEta",&gedgsfElecEta,"gedgsfElecEta/F");
         tree_efficiency->Branch("gedgsfElecPhi",&gedgsfElecPhi,"gedgsfElecPhi/F");
@@ -138,6 +144,9 @@ void GenToRecoFiller::initGenToRecoFillerObject(){
         gedgsfElecPhi = -777.0;
 	inRecoJet = 0;
 	isMatchedWithASeed=0;
+	isEcalDrivenSeeded=0;
+        isDeltaRMatchedWithASeed=0;
+        isDeltaREcalDrivenSeeded=0;
 	isMatchedWithAGedGsfElec=0;	
 	origin=-777;
 	mva_e_pi=-777;

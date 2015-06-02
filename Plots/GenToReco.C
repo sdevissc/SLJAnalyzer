@@ -25,32 +25,58 @@ using namespace std;
 
 const int Nbin2D=300; 
 
+template <class Type>
+void SetStyle(Type *a,int color, int style, int fillstyle, const TString& xtitle,const TString& ytitle, float min, float max){
+        a->SetLineColor(color);
+        a->SetMarkerColor(color);
+        a->SetMarkerStyle(style);
+        a->SetFillColor(color);
+        a->SetFillStyle(fillstyle);
+        a->GetXaxis()->SetTitle(xtitle);
+        a->GetYaxis()->SetTitle(ytitle);
+        if(min!=-777.0 && max!=-777.0 ){
+                a->SetMinimum(min);
+                a->SetMaximum(max);
+        }
+}
+
+
 class HistoMaker
 {
   public:
-	HistoMaker(const TString &,const TString &);
+	HistoMaker(const TString& ,const TString &);
 	~HistoMaker();
-	void SetStyle(TH1F *,int, int, const TString&,const TString&, float, float);
-        void SetStyle(TProfile *,int, int, const TString&,const TString&, float, float);
 	void Combine();
-
-	TH1F *Pt_gen_all;
-	TH1F *Pt_gen_MatchedWithASeed;
+	
+	TH1F* TemplatePt;
+	TH1F* TemplateEta;
+	TH1F *Pt[6],*EffPt[6],*EffEta[6],*Eta[6];
+/*
+	TH1F *Pt[0];
+	TH1F *Pt_gen_MatchedWithATrackSeed;
+	TH1F *Pt_gen_MatchedWithAECALSeed;
+	TH1F *Pt_gen_MatchedWithAECAL_or_TrackerSeed;
 	TH1F *Pt_gen_MatchedWithAGedGsfElec;
         TH1F *Pt_gen_MatchedWithAPFElec;
         
         TH1F *Eta_gen_all;
-	TH1F *Eta_gen_MatchedWithASeed;
+	TH1F *Eta_gen_MatchedWithATrackSeed;
+       	TH1F *Eta_gen_MatchedWithAECALSeed;
+        TH1F *Eta_gen_MatchedWithAECAL_or_TrackerSeed;
 	TH1F *Eta_gen_MatchedWithAGedGsfElec;
         TH1F *Eta_gen_MatchedWithAPFElec;
 
-	TH1F *EfficiencyVsPt_Seed;
-        TH1F *EfficiencyVsEta_Seed;
-        TH1F *EfficiencyVsPt_GedGsfElec;
-        TH1F *EfficiencyVsEta_GedGsfElec;
+	TH1F *EffPt[1];
+        TH1F *EffEta[1];
+	TH1F *EfficiencyVsPt_ECALSeed;
+        TH1F *EfficiencyVsEta_ECALSeed;
+	TH1F *EfficiencyVsPt_ECAL_or_TrackerSeed;
+        TH1F *EfficiencyVsEta_ECAL_or_TrackerSeed;
+        TH1F *EffPt[4];
+        TH1F *EffEta[4];
         TH1F *EfficiencyVsPt_PFElec;
         TH1F *EfficiencyVsEta_PFElec;
-	
+*/	
 	TH1F *mva_e_pi,*mva_e_pi_PF;	
 
 	TH1F* ForIntegral;
@@ -62,82 +88,23 @@ class HistoMaker
 HistoMaker::HistoMaker(const TString& inputname,const TString & tag)
 {
 	const int nbinpt=6,nbineta=13;
-	 TH1::SetDefaultSumw2(kTRUE);
+	TH1::SetDefaultSumw2(kTRUE);
 	cout<<"define the binning"<<endl;
-//	float ptx[17]= {0.0 , 2.0 , 3.0 , 4.0 , 6.0 , 8.0 , 10.0 , 13.0 , 16.0  , 20.0 , 24.0 , 30.0 , 40.0 , 55.0 , 70.0 , 90.0 , 120.0};
 	float etax[14]={-2.5 , -2.1  , -1.7 , -1.3 , -0.9 , -0.5 , -0.1 , 0.1 , 0.5 , 0.9 , 1.3 , 1.7 , 2.1 , 2.5 };
         float ptx[nbinpt+1]= { 2.0 , 5.0 , 10.0 , 20.0 , 30.0 , 50.0 , 120.0};
 
-	 cout<<"define pt and eta basic histos"<<endl;
+	cout<<"define pt and eta basic histos"<<endl;
 	ForIntegral=new TH1F(inputname+tag+"forIntegral","",Nbin2D,-100000,100000);	
-
-        Pt_gen_all=new TH1F(inputname+tag+"Pt_gen_all","",nbinpt,ptx);
-	cout<<"ok"<<endl;
-        Eta_gen_all=new TH1F(inputname+tag+"Eta_gen_all","",nbineta,etax);
+	TemplatePt=new TH1F(inputname+tag+"Pt[0]","",nbinpt,ptx);
+	TemplateEta=new TH1F(inputname+tag+"Eta[0]","",nbineta,etax);
 	
-	Pt_gen_MatchedWithASeed=new TH1F(inputname+tag+"Pt_gen_MatchedWithSeed","",nbinpt,ptx);
-        Eta_gen_MatchedWithASeed=new TH1F(inputname+tag+"Eta_gen_MatchedWithSeed","",nbineta,etax);
-	
-	Pt_gen_MatchedWithAGedGsfElec=new TH1F(inputname+tag+"Pt_gen_MatchedWithGedGsfElec","",nbinpt,ptx);
-        Eta_gen_MatchedWithAGedGsfElec=new TH1F(inputname+tag+"Eta_gen_MatchedWithGedGsfElec","",nbineta,etax);
-	
-        Pt_gen_MatchedWithAPFElec=new TH1F(inputname+tag+"Pt_gen_MatchedWithPFElec","",nbinpt,ptx);
-        Eta_gen_MatchedWithAPFElec=new TH1F(inputname+tag+"Eta_gen_MatchedWithPFElec","",nbineta,etax);
+	for(int i=0;i<6;i++){
+		Pt[i]=(TH1F*)TemplatePt->Clone(Form("Pt_%d",i));
+		Eta[i]=(TH1F*)TemplateEta->Clone(Form("Eta_%d",i));
+		EffPt[i]=(TH1F*)TemplatePt->Clone(Form("EffPt_%d",i));
+                EffEta[i]=(TH1F*)TemplateEta->Clone(Form("EffEta_%d",i));
+	}
 
-	 cout<<"define the efficiency histos"<<endl;
-	EfficiencyVsPt_Seed=new TH1F(inputname+tag+"effptseed","",nbinpt,ptx);
-        EfficiencyVsEta_Seed=new TH1F(inputname+tag+"effetaseed","",nbineta,etax);
-        EfficiencyVsPt_GedGsfElec=new TH1F(inputname+tag+"effptged","",nbinpt,ptx);
-        EfficiencyVsEta_GedGsfElec=new TH1F(inputname+tag+"effgedeta","",nbineta,etax);
-	EfficiencyVsPt_PFElec=new TH1F(inputname+tag+"effptpf","",nbinpt,ptx);
-        EfficiencyVsEta_PFElec=new TH1F(inputname+tag+"effetapf","",nbineta,etax);
-
-	mva_e_pi=new TH1F(inputname+tag+"mva","",Nbin2D,-1,1.0);
-        mva_e_pi_PF=new TH1F(inputname+tag+"mvapf","",Nbin2D,-1,1.0);
-
-	SetStyle(Pt_gen_all,1,22,"p_{T} of the generated electron","",0.001,1.2);
-	SetStyle(Eta_gen_all,1,22,"eta_{T} of the generated electron","",0.001,1.2);	
-
-        SetStyle(Pt_gen_MatchedWithASeed,1,22,"p_{T} of the generated electron","",0.001,1.2);
-        SetStyle(Pt_gen_MatchedWithAGedGsfElec,2,22,"p_{T} of the generated electron","",0.001,1.2);
-        SetStyle(Pt_gen_MatchedWithAPFElec,2,22,"p_{T} of the generated electron","",0.001,1.2);
-
-        SetStyle(Eta_gen_MatchedWithASeed,1,22,"#eta of the generated electron","",0.001,1.2);
-        SetStyle(Eta_gen_MatchedWithAGedGsfElec,2,22,"#eta of the generated electron","",0.001,1.2);
-        SetStyle(Eta_gen_MatchedWithAPFElec,2,22,"#eta of the generated electron","",0.001,1.2);
-
-	SetStyle(EfficiencyVsPt_Seed,1,22,"p_{T} of the generated electron","",0.001,1.2);
-        SetStyle(EfficiencyVsPt_GedGsfElec,2,22,"p_{T} of the generated electron","",0.001,1.2);
-        SetStyle(EfficiencyVsPt_PFElec,2,22,"p_{T} of the generated electron","",0.001,1.2);
-	
-	SetStyle(EfficiencyVsEta_Seed,1,22,"#eta of the generated electron","",0.001,1.2);
-	SetStyle(EfficiencyVsEta_GedGsfElec,2,22,"#eta of the generated electron","",0.001,1.2);
-	SetStyle(EfficiencyVsEta_PFElec,2,22,"#eta of the generated electron","",0.001,1.2);
-	
-
-}
-
-
-void HistoMaker::SetStyle(TH1F *histo,int color, int style, const TString& xtitle,const TString& ytitle, float min, float max){
-	histo->SetLineColor(color);
-        histo->SetMarkerColor(color);
-        histo->SetMarkerStyle(style);
-        histo->GetXaxis()->SetTitle(xtitle);
-	histo->GetYaxis()->SetTitle(ytitle);
-		histo->SetMinimum(min);
-      	  	histo->SetMaximum(max);
-}
-
-void HistoMaker::SetStyle(TProfile *histo,int color, int style, const TString& xtitle,const TString& ytitle, float min, float max){
-        histo->SetLineColor(color);
-        histo->SetMarkerColor(color);
-        histo->SetMarkerStyle(style);
-        histo->GetXaxis()->SetTitle(xtitle);
-        histo->GetYaxis()->SetTitle(ytitle);
-        if(min!=-777.0 && max!=-777.0 ){
-                histo->SetMinimum(min);
-                histo->SetMaximum(max);
-        }
 }
 
 HistoMaker::~HistoMaker()                 // destructor, just an example
@@ -150,23 +117,15 @@ HistoMaker::~HistoMaker()                 // destructor, just an example
 
 void HistoMaker::Combine(){
 	TH1::SetDefaultSumw2(kTRUE);
-	EfficiencyVsPt_Seed->Add(Pt_gen_MatchedWithASeed);
-        EfficiencyVsPt_Seed->Divide(Pt_gen_all);
-        EfficiencyVsEta_Seed->Add(Eta_gen_MatchedWithASeed);
-        EfficiencyVsEta_Seed->Divide(Eta_gen_all);
 
-	EfficiencyVsPt_GedGsfElec->Add(Pt_gen_MatchedWithAGedGsfElec);
-        EfficiencyVsPt_GedGsfElec->Divide(Pt_gen_all);
-        EfficiencyVsEta_GedGsfElec->Add(Eta_gen_MatchedWithAGedGsfElec);
-        EfficiencyVsEta_GedGsfElec->Divide(Eta_gen_all);
-
-        EfficiencyVsPt_PFElec->Add(Pt_gen_MatchedWithAPFElec);
-        EfficiencyVsPt_PFElec->Divide(Pt_gen_all);
-        EfficiencyVsEta_PFElec->Add(Eta_gen_MatchedWithAPFElec);
-        EfficiencyVsEta_PFElec->Divide(Eta_gen_all);
-
+	for(int i=1;i<6;i++){
+		EffPt[i]->Add(Pt[i]);
+		EffPt[i]->Divide(Pt[0]);
+		EffEta[i]->Add(Eta[i]);
+		EffEta[i]->Divide(Eta[0]);
+	}
+	cout<<EffPt[1]->Integral()<<" "<<EffEta[1]->Integral()<<" "<<EffPt[4]->Integral()<<" "<<EffEta[4]->Integral()<<endl;
 	
-	cout<<EfficiencyVsPt_Seed->Integral()<<" "<<EfficiencyVsEta_Seed->Integral()<<" "<<EfficiencyVsPt_GedGsfElec->Integral()<<" "<<EfficiencyVsEta_GedGsfElec->Integral()<<endl;
 }
 
 
@@ -204,6 +163,7 @@ class SLPlotter                   // begin declaration of the class
 	HistoMaker *electron_lowPU;
         HistoMaker *electron_midPU;
         HistoMaker *electron_highPU;
+	HistoMaker *electron_isolated;
         HistoMaker *pion_lowPU;
         HistoMaker *pion_midPU;
         HistoMaker *pion_highPU;
@@ -229,6 +189,7 @@ SLPlotter::SLPlotter(const TString &input,const TString &tag)
 	electron_lowPU=new HistoMaker("elec_lpu",TheTag);
 	electron_midPU=new HistoMaker("elec_mpu",TheTag);
 	electron_highPU=new HistoMaker("elec_hpu",TheTag);
+	electron_isolated=new HistoMaker("elecisol_hpu",TheTag);
         pion_lowPU=new HistoMaker("pion_lpu",TheTag);
 	pion_midPU=new HistoMaker("pion_mpu",TheTag);
 	pion_highPU=new HistoMaker("pion_hpu",TheTag);
@@ -273,110 +234,125 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
         can->SetTopMargin(0.05);
         can->SetRightMargin(0.05);
         can->SetBottomMargin(0.15);
+
 	TLegend *legend=new TLegend(0.65,0.8,0.95,0.96);
         legend->SetBorderSize(1);
         legend->SetFillColor(0);
         legend->SetTextSize(0.020);
-	
 
-//-----------------------------------
+//---------------------------------------------------------	
+        legend->SetTextSize(0.020);
+	legend->AddEntry(electron->EffPt[1],"e_{B}#rightarrow TDS (all PU)");
+        legend->AddEntry(electron_lowPU->EffPt[1],"e_{B}#rightarrow TDS (<30 PU)");
+        legend->AddEntry(electron_highPU->EffPt[1],"e_{B}#rightarrow TDS (>30 PU)");
+	legend->AddEntry(pion->EffPt[1],"#pi#rightarrow TDS (all PU)");
+        legend->AddEntry(pion_lowPU->EffPt[1],"#pi#rightarrow TDS (<30 PU)");
+        legend->AddEntry(pion_highPU->EffPt[1],"#pi#rightarrow TDS (>30 PU)");
+	
 
 	gPad->SetGridx();
         gPad->SetGridy();
-	if(log==1)gPad->SetLogy(1);
-	//Plotting Pt plot
+	gPad->SetLogy(log);
 
+	SetStyle(electron->EffPt[1],1,20,3003,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
+	SetStyle(electron_lowPU->EffPt[1],2,21,3004,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
+	SetStyle(electron_highPU->EffPt[1],4,22,3005,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
+	SetStyle(pion->EffPt[1],1,23,3006,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
+        SetStyle(pion_lowPU->EffPt[1],2,33,3002,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
+        SetStyle(pion_highPU->EffPt[1],4,34,3017,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
 
-	// GSFTrack_all vs GSFTracl_ecalSeeded
-	legend->AddEntry(electron->EfficiencyVsPt_Seed,"e_{B}#rightarrow Seed (all PU)");
-//	legend->AddEntry(electron->EfficiencyVsPt_GedGsfElec,"e_{B}#rightarrow GED Elec");
-  //      legend->AddEntry(electron->EfficiencyVsPt_PFElec,"e_{B}#rightarrow PF Elec");	
-        legend->AddEntry(electron_lowPU->EfficiencyVsPt_Seed,"e_{B}#rightarrow Seed (<30 PU)","p");
-//        legend->AddEntry(electron_lowPU->EfficiencyVsPt_GedGsfElec,"GED Gsf elec low PU","p");
-//        legend->AddEntry(electron_lowPU->EfficiencyVsPt_PFElec,"PF elec low PU","p");
-        legend->AddEntry(electron_highPU->EfficiencyVsPt_Seed,"e_{B}#rightarrow Seed (>30 PU)","p");
-//        legend->AddEntry(electron_highPU->EfficiencyVsPt_GedGsfElec,"GED Gsf elec high PU","p");
-//        legend->AddEntry(electron_highPU->EfficiencyVsPt_PFElec,"PF elec high PU","p");
+	electron->EffPt[1]->Draw("pe2");
+	electron_lowPU->EffPt[1]->Draw("pe2same");
+	electron_highPU->EffPt[1]->Draw("pe2same");
+	pion->EffPt[1]->Draw("pe2same");
+        pion_lowPU->EffPt[1]->Draw("pe2same");
+        pion_highPU->EffPt[1]->Draw("pe2same");
 
-	electron->EfficiencyVsPt_Seed->SetMaximum(1.2);
-	electron->EfficiencyVsPt_Seed->Draw("pe2");
-//        electron->EfficiencyVsPt_GedGsfElec->Draw("pe1same");
-//        electron->EfficiencyVsPt_PFElec->Draw("pe1same");
-	
-        electron->EfficiencyVsPt_Seed->SetMarkerStyle(22);
-	electron->EfficiencyVsPt_Seed->SetFillColor(1);
-	electron->EfficiencyVsPt_Seed->SetFillStyle(3004);
-	electron->EfficiencyVsPt_GedGsfElec->SetMarkerStyle(24);
-        electron->EfficiencyVsPt_PFElec->SetMarkerStyle(25);
-	electron->EfficiencyVsPt_Seed->SetMarkerColor(1);
-        electron->EfficiencyVsPt_GedGsfElec->SetMarkerColor(1);	
-        electron->EfficiencyVsPt_PFElec->SetMarkerColor(1);
-
-	electron_lowPU->EfficiencyVsPt_Seed->SetMarkerStyle(22);
-	electron_lowPU->EfficiencyVsPt_Seed->SetFillColor(2);
-        electron_lowPU->EfficiencyVsPt_Seed->SetFillStyle(3005);
-	electron_lowPU->EfficiencyVsPt_GedGsfElec->SetMarkerStyle(24);	
-        electron_lowPU->EfficiencyVsPt_PFElec->SetMarkerStyle(25);
-	electron_lowPU->EfficiencyVsPt_Seed->SetMarkerColor(2);
-        electron_lowPU->EfficiencyVsPt_GedGsfElec->SetMarkerColor(2);
-        electron_lowPU->EfficiencyVsPt_PFElec->SetMarkerColor(2);
-
-	electron_highPU->EfficiencyVsPt_Seed->SetMarkerStyle(22);
-	electron_highPU->EfficiencyVsPt_Seed->SetFillColor(4);
-        electron_highPU->EfficiencyVsPt_Seed->SetFillStyle(3003);
-
-        electron_highPU->EfficiencyVsPt_GedGsfElec->SetMarkerStyle(24);
-        electron_highPU->EfficiencyVsPt_PFElec->SetMarkerStyle(25);
-	electron_highPU->EfficiencyVsPt_Seed->SetMarkerColor(4);
-        electron_highPU->EfficiencyVsPt_GedGsfElec->SetMarkerColor(3);
-        electron_highPU->EfficiencyVsPt_PFElec->SetMarkerColor(3);
-
-	electron_lowPU->EfficiencyVsPt_Seed->Draw("pe2same");
-//        electron_lowPU->EfficiencyVsPt_GedGsfElec->Draw("pe1same");
-//        electron_lowPU->EfficiencyVsPt_PFElec->Draw("pe1same");
-	electron_highPU->EfficiencyVsPt_Seed->Draw("pe2same");
-//        electron_highPU->EfficiencyVsPt_GedGsfElec->Draw("pe1same");	
-//        electron_highPU->EfficiencyVsPt_PFElec->Draw("pe1same");
 
 	legend->Draw();	
 
-	can->Print(ProcessName+"_Electron_RecoEff_vs_Pt.pdf");	
-
-	electron->EfficiencyVsEta_Seed->SetMaximum(1.2);
-	electron->EfficiencyVsEta_Seed->SetMinimum(0.0001);	
-	electron->EfficiencyVsEta_Seed->Draw("pe1");
-        electron->EfficiencyVsEta_GedGsfElec->Draw("pe1same");
-        electron->EfficiencyVsEta_PFElec->Draw("pe1same");
+	can->Print(Form(ProcessName+"_Electron_and_pion_TDS_SeedEff_vs_Pt_log%d.pdf",log));	
+	legend->Clear();
+//----------------------------------------------------------------
 
 
-        electron->EfficiencyVsEta_Seed->SetMarkerColor(1);
-        electron->EfficiencyVsEta_GedGsfElec->SetMarkerColor(1);
-        electron->EfficiencyVsEta_PFElec->SetMarkerColor(1);
-        electron->EfficiencyVsEta_Seed->SetMarkerStyle(22);
-        electron->EfficiencyVsEta_GedGsfElec->SetMarkerStyle(24);
-        electron->EfficiencyVsEta_PFElec->SetMarkerStyle(25);
+        legend->SetTextSize(0.020);
+        legend->AddEntry(electron->EffPt[1],"e_{B}#rightarrow TDS");
+        legend->AddEntry(electron_lowPU->EffPt[1],"e_{B}#rightarrow EDS ");
+        legend->AddEntry(electron_highPU->EffPt[1],"e_{B}#rightarrow TDS #wedge EDS");
+        legend->AddEntry(pion->EffPt[1],"#pi#rightarrow TDS");
+        legend->AddEntry(pion_lowPU->EffPt[1],"#pi#rightarrow EDS");
+        legend->AddEntry(pion_highPU->EffPt[1],"#pi#rightarrow TDS #wedge EDS");
 
-        electron_lowPU->EfficiencyVsEta_Seed->SetMarkerColor(2);
-        electron_lowPU->EfficiencyVsEta_GedGsfElec->SetMarkerColor(2);
-        electron_lowPU->EfficiencyVsEta_PFElec->SetMarkerColor(2);
-        electron_highPU->EfficiencyVsEta_Seed->SetMarkerColor(3);
-        electron_highPU->EfficiencyVsEta_GedGsfElec->SetMarkerColor(3);
-        electron_highPU->EfficiencyVsEta_PFElec->SetMarkerColor(3);
 
-	electron_lowPU->EfficiencyVsEta_Seed->SetMarkerStyle(22);
-        electron_lowPU->EfficiencyVsEta_GedGsfElec->SetMarkerStyle(24);
-        electron_lowPU->EfficiencyVsEta_PFElec->SetMarkerStyle(25);
-        electron_highPU->EfficiencyVsEta_Seed->SetMarkerStyle(22);
-        electron_highPU->EfficiencyVsEta_GedGsfElec->SetMarkerStyle(24);
-        electron_highPU->EfficiencyVsEta_PFElec->SetMarkerStyle(25);
-/*
-        electron_lowPU->EfficiencyVsEta_Seed->Draw("pe1same");
-        electron_lowPU->EfficiencyVsEta_GedGsfElec->Draw("pe1same");
-        electron_lowPU->EfficiencyVsEta_PFElec->Draw("pe1same");
-        electron_highPU->EfficiencyVsEta_Seed->Draw("pe1same");
-        electron_highPU->EfficiencyVsEta_GedGsfElec->Draw("pe1same");
-        electron_highPU->EfficiencyVsEta_PFElec->Draw("pe1same");
-*/
+        gPad->SetGridx();
+        gPad->SetGridy();
+        gPad->SetLogy(log);
+
+        SetStyle(electron->EffPt[1],1,20,3003,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
+        SetStyle(electron->EffPt[2],2,21,3004,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
+        SetStyle(electron->EffPt[3],4,22,3005,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
+        SetStyle(pion->EffPt[1],1,23,3006,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
+        SetStyle(pion->EffPt[2],2,33,3002,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
+        SetStyle(pion->EffPt[3],4,34,3017,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
+
+        electron->EffPt[1]->Draw("pe2");
+        electron->EffPt[2]->Draw("pe2same");
+        electron->EffPt[3]->Draw("pe2same");
+        pion->EffPt[1]->Draw("pe2same");
+        pion->EffPt[2]->Draw("pe2same");
+        pion->EffPt[3]->Draw("pe2same");
+
+
+        legend->Draw();
+
+        can->Print(Form(ProcessName+"_Electron_and_pion_TDSvsEDSvsTDSOREDS_seedeff_vs_Pt_log%d.pdf",log));
+        legend->Clear();
+
+//------------------------------------------------------------------------	
+
+
+        legend->SetTextSize(0.020);
+        //ilegend->AddEntry(electron_isolated->EffPt[1],"e_{V}#rightarrow TDS");
+        //legend->AddEntry(electron_isolated->EffPt[2],"e_{V}#rightarrow EDS");
+        //legend->AddEntry(electron_isolated->EffPt[3],"e_{V}#rightarrow  TDS #wedge EDS");
+
+	
+        gPad->SetGridx();
+        gPad->SetGridy();
+        gPad->SetLogy(log);
+
+        SetStyle(electron_isolated->EffPt[1],1,20,3003,"p_{T} of the generated particle","Efficiency",0.99,550);
+        SetStyle(electron_isolated->EffPt[2],2,21,3004,"p_{T} of the generated particle","Efficiency",0.99,550);
+        SetStyle(electron_isolated->EffPt[3],4,22,3005,"p_{T} of the generated particle","Efficiency(#%)",0.99,550);
+	
+	electron_isolated->EffPt[3]->GetYaxis()->SetNdivisions(520);
+	electron_isolated->EffPt[3]->Scale(100);
+//        electron_isolated->EffPt[1]->Draw("pe2");
+//        electron_isolated->EffPt[2]->Draw("pe2same");
+//        electron_isolated->EffPt[3]->Draw("pe2same");
+	TH1F*h =(TH1F*)electron_isolated->EffPt[3]->Clone("improvement");
+	h->Divide(electron_isolated->EffPt[2]);
+	SetStyle(h,6,23,3005,"p_{T} of the generated electron","Efficiency improvement (%)",50,1000);
+	legend->AddEntry(h,"#varepsilon_{TDS #wedge EDS}/#varepsilon_{EDS}");
+	h->Draw("p");
+
+
+        legend->Draw();
+
+        can->Print(Form(ProcessName+"_IsolatedElectron_TDSvsEDSvsTDSOREDS_seedeff_vs_Pt_log%d.pdf",log));
+        legend->Clear();
+
+//----------------------------------------------------------
+
+	SetStyle(electron->EffEta[1],1,22,3004,"#eta_{T} of the generated particle","",0.001,1.2);
+        SetStyle(electron_lowPU->EffEta[1],2,23,3005,"#eta_{T} of the generated particle","",0.001,1.2);
+        SetStyle(electron_highPU->EffEta[1],3,24,3006,"#eta_{T} of the generated particle","",0.001,1.2);
+
+	electron->EffEta[1]->Draw("hpe1");
+        electron->EffEta[4]->Draw("hpe1same");
+        electron->EffEta[5]->Draw("hpe1same");
+
 	legend->Draw();
 	
         can->Print(ProcessName+"_Electron_RecoEff_vs_Eta.pdf");
@@ -385,52 +361,31 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
 	gPad->SetLogy(1);	
 	legend->Clear();
 	
-	pion->EfficiencyVsPt_Seed->SetMaximum(1.2);
-	pion->EfficiencyVsPt_Seed->SetMinimum(0.001);
-        pion->EfficiencyVsPt_Seed->Draw("pe2");
-	pion_lowPU->EfficiencyVsEta_Seed->SetMarkerColor(2);
-        pion_highPU->EfficiencyVsEta_Seed->SetMarkerColor(3);
-	pion_lowPU->EfficiencyVsEta_Seed->SetMarkerStyle(22);
-	pion_highPU->EfficiencyVsEta_Seed->SetMarkerStyle(22);
-	pion_lowPU->EfficiencyVsPt_Seed->SetFillColor(2);
-        pion_lowPU->EfficiencyVsPt_Seed->SetFillStyle(3005);
-	pion_highPU->EfficiencyVsPt_Seed->SetFillColor(4);
-        pion_highPU->EfficiencyVsPt_Seed->SetFillStyle(3003);
-	pion_lowPU->EfficiencyVsPt_Seed->Draw("pe2same");
-	pion_highPU->EfficiencyVsPt_Seed->Draw("pe2same");
+	pion->EffPt[1]->SetMaximum(1.2);
+	pion->EffPt[1]->SetMinimum(0.001);
+        pion->EffPt[1]->Draw("pe2");
+	pion_lowPU->EffPt[1]->Draw("pe2same");
+	pion_highPU->EffPt[1]->Draw("pe2same");
 	
 
 
-        pion->EfficiencyVsPt_GedGsfElec->Draw("pe2same");
+        pion->EffPt[4]->Draw("pe2same");
   
 
-        pion->EfficiencyVsPt_PFElec->Draw("pe2same");
-	pion->EfficiencyVsPt_Seed->SetMarkerStyle(22);
-        pion->EfficiencyVsPt_GedGsfElec->SetMarkerStyle(22);
-        pion->EfficiencyVsPt_PFElec->SetMarkerStyle(24);
-	pion->EfficiencyVsPt_Seed->SetMarkerColor(1);
-        pion->EfficiencyVsPt_GedGsfElec->SetMarkerColor(1);
-        pion->EfficiencyVsPt_PFElec->SetMarkerColor(1);
-	legend->AddEntry(pion->EfficiencyVsPt_Seed,"#pi#rightarrow Seed (all PU)");
-	legend->AddEntry(pion->EfficiencyVsPt_GedGsfElec,"#pi#rightarrow Seed (<30)");
-	legend->AddEntry(pion->EfficiencyVsPt_PFElec,"#pi#rightarrow Seed (>30)");
+        pion->EffPt[5]->Draw("pe2same");
+	legend->AddEntry(pion->EffPt[1],"#pi#rightarrow Seed (all PU)");
+	legend->AddEntry(pion->EffPt[4],"#pi#rightarrow Seed (<30)");
+	legend->AddEntry(pion->EffPt[5],"#pi#rightarrow Seed (>30)");
 
         legend->Draw();
 
         can->Print(ProcessName+"_Pion_RecoEff_vs_Pt.pdf");
 
-	pion->EfficiencyVsEta_Seed->SetMarkerStyle(22);
-        pion->EfficiencyVsEta_GedGsfElec->SetMarkerStyle(23);
-        pion->EfficiencyVsEta_PFElec->SetMarkerStyle(24);
-        pion->EfficiencyVsEta_Seed->SetMarkerColor(1);
-        pion->EfficiencyVsEta_GedGsfElec->SetMarkerColor(1);
-        pion->EfficiencyVsEta_PFElec->SetMarkerColor(1);
-
-        pion->EfficiencyVsEta_Seed->SetMaximum(1.2);
-        pion->EfficiencyVsEta_Seed->SetMinimum(0.001);
-        pion->EfficiencyVsEta_Seed->Draw("pe1");
-        pion->EfficiencyVsEta_GedGsfElec->Draw("pe1same");	
-        pion->EfficiencyVsEta_PFElec->Draw("pe1same");
+        pion->EffEta[1]->SetMaximum(1.2);
+        pion->EffEta[1]->SetMinimum(0.001);
+        pion->EffEta[1]->Draw("pe1");
+        pion->EffEta[4]->Draw("pe1same");	
+        pion->EffEta[5]->Draw("pe1same");
 	legend->Draw();
 	can->Print(ProcessName+"_Pion_RecoEff_vs_Eta.pdf");
 
@@ -461,15 +416,15 @@ void SLPlotter::MakeEffvsEffPlot(TString &process){
         cout<<"plpu ForIntegral: "<<pion_lowPU->ForIntegral->Integral()<<endl;
 
         for(int k=0;k<Nbin2D;k++){
-                float fr1=electron->mva_e_pi->Integral(k+1,Nbin2D)/electron->Pt_gen_all->Integral();
-                float fr2=pion->mva_e_pi->Integral(k+1,Nbin2D)/pion->Pt_gen_all->Integral();
+                float fr1=electron->mva_e_pi->Integral(k+1,Nbin2D)/electron->Pt[0]->Integral();
+                float fr2=pion->mva_e_pi->Integral(k+1,Nbin2D)/pion->Pt[0]->Integral();
                 x_ged_all[k]=fr1;
                 y_ged_all[k]=fr2;
         }
         TGraph *gr_ged_all=new TGraph(Nbin2D,x_ged_all,y_ged_all);
 
         for(int k=0;k<Nbin2D;k++){
-                float fr1=electron->mva_e_pi->Integral(k+1,Nbin2D)/electron->Pt_gen_all->Integral();
+                float fr1=electron->mva_e_pi->Integral(k+1,Nbin2D)/electron->Pt[0]->Integral();
                 float fr2=background->mva_e_pi->Integral(k+1,Nbin2D)/background->mva_e_pi->Integral();
                 x_ged_all_effvsmistag[k]=fr1;
                 y_ged_all_effvsmistag[k]=fr2;
@@ -478,24 +433,24 @@ void SLPlotter::MakeEffvsEffPlot(TString &process){
 
 
         for(int k=0;k<Nbin2D;k++){
-		float fr1=electron_lowPU->mva_e_pi->Integral(k+1,Nbin2D)/electron_lowPU->Pt_gen_all->Integral();
-		float fr2=pion_lowPU->mva_e_pi->Integral(k+1,Nbin2D)/pion_lowPU->Pt_gen_all->Integral();
+		float fr1=electron_lowPU->mva_e_pi->Integral(k+1,Nbin2D)/electron_lowPU->Pt[0]->Integral();
+		float fr2=pion_lowPU->mva_e_pi->Integral(k+1,Nbin2D)/pion_lowPU->Pt[0]->Integral();
                 x_ged_lpu[k]=fr1;
                 y_ged_lpu[k]=fr2;
-		cout<<"lowpu: bin"<<k<<" center of bin "<<electron_lowPU->mva_e_pi->GetBinCenter(k+1)<<" "<<electron_lowPU->mva_e_pi->Integral(k+1,Nbin2D)<<" "<<electron_lowPU->Pt_gen_all->Integral()<<" "<<fr1<<" "<<fr2<<endl;
+		cout<<"lowpu: bin"<<k<<" center of bin "<<electron_lowPU->mva_e_pi->GetBinCenter(k+1)<<" "<<electron_lowPU->mva_e_pi->Integral(k+1,Nbin2D)<<" "<<electron_lowPU->Pt[0]->Integral()<<" "<<fr1<<" "<<fr2<<endl;
         }
 	TGraph *gr_ged_lpu=new TGraph(Nbin2D,x_ged_lpu,y_ged_lpu);
 	for(int k=0;k<Nbin2D;k++){
-		float fr1=electron_midPU->mva_e_pi->Integral(k+1,Nbin2D)/electron_midPU->Pt_gen_all->Integral();
-                float fr2=pion_midPU->mva_e_pi->Integral(k+1,Nbin2D)/pion_midPU->Pt_gen_all->Integral();
+		float fr1=electron_midPU->mva_e_pi->Integral(k+1,Nbin2D)/electron_midPU->Pt[0]->Integral();
+                float fr2=pion_midPU->mva_e_pi->Integral(k+1,Nbin2D)/pion_midPU->Pt[0]->Integral();
                 x_ged_mpu[k]=fr1;
                 y_ged_mpu[k]=fr2;
 		cout<<"midpu:"<<fr1<<" "<<fr2<<endl;
         }
         TGraph *gr_ged_mpu=new TGraph(Nbin2D,x_ged_mpu,y_ged_mpu);
 	for(int k=0;k<Nbin2D;k++){
-		float fr1=electron_highPU->mva_e_pi->Integral(k+1,Nbin2D)/electron_highPU->Pt_gen_all->Integral();
-                float fr2=pion_highPU->mva_e_pi->Integral(k+1,Nbin2D)/pion_highPU->Pt_gen_all->Integral();
+		float fr1=electron_highPU->mva_e_pi->Integral(k+1,Nbin2D)/electron_highPU->Pt[0]->Integral();
+                float fr2=pion_highPU->mva_e_pi->Integral(k+1,Nbin2D)/pion_highPU->Pt[0]->Integral();
                 x_ged_hpu[k]=fr1;
                 y_ged_hpu[k]=fr2;
 		cout<<"highpu:"<<fr1<<" "<<fr2<<endl;
@@ -504,24 +459,24 @@ void SLPlotter::MakeEffvsEffPlot(TString &process){
 
 /////////////////
         for(int k=0;k<Nbin2D;k++){
-                float fr1=electron_lowPU->mva_e_pi_PF->Integral(k+1,Nbin2D)/electron_lowPU->Pt_gen_all->Integral();
-                float fr2=pion_lowPU->mva_e_pi_PF->Integral(k+1,Nbin2D)/pion_lowPU->Pt_gen_all->Integral();
+                float fr1=electron_lowPU->mva_e_pi_PF->Integral(k+1,Nbin2D)/electron_lowPU->Pt[0]->Integral();
+                float fr2=pion_lowPU->mva_e_pi_PF->Integral(k+1,Nbin2D)/pion_lowPU->Pt[0]->Integral();
                 x_pf_lpu[k]=fr1;
                 y_pf_lpu[k]=fr2;
-                cout<<"lowpu: bin"<<k<<" center of bin "<<electron_lowPU->mva_e_pi->GetBinCenter(k+1)<<" "<<electron_lowPU->mva_e_pi->Integral(k+1,Nbin2D)<<" "<<electron_lowPU->Pt_gen_all->Integral()<<" "<<fr1<<" "<<fr2<<endl;
+                cout<<"lowpu: bin"<<k<<" center of bin "<<electron_lowPU->mva_e_pi->GetBinCenter(k+1)<<" "<<electron_lowPU->mva_e_pi->Integral(k+1,Nbin2D)<<" "<<electron_lowPU->Pt[0]->Integral()<<" "<<fr1<<" "<<fr2<<endl;
         }
         TGraph *gr_pf_lpu=new TGraph(Nbin2D,x_pf_lpu,y_pf_lpu);
         for(int k=0;k<Nbin2D;k++){
-                float fr1=electron_midPU->mva_e_pi_PF->Integral(k+1,Nbin2D)/electron_midPU->Pt_gen_all->Integral();
-                float fr2=pion_midPU->mva_e_pi_PF->Integral(k+1,Nbin2D)/pion_midPU->Pt_gen_all->Integral();
+                float fr1=electron_midPU->mva_e_pi_PF->Integral(k+1,Nbin2D)/electron_midPU->Pt[0]->Integral();
+                float fr2=pion_midPU->mva_e_pi_PF->Integral(k+1,Nbin2D)/pion_midPU->Pt[0]->Integral();
                 x_pf_mpu[k]=fr1;
                 y_pf_mpu[k]=fr2;
                 cout<<"midpu:"<<fr1<<" "<<fr2<<endl;
         }
         TGraph *gr_pf_mpu=new TGraph(Nbin2D,x_pf_mpu,y_pf_mpu);
         for(int k=0;k<Nbin2D;k++){
-                float fr1=electron_highPU->mva_e_pi_PF->Integral(k+1,Nbin2D)/electron_highPU->Pt_gen_all->Integral();
-                float fr2=pion_highPU->mva_e_pi_PF->Integral(k+1,Nbin2D)/pion_highPU->Pt_gen_all->Integral();
+                float fr1=electron_highPU->mva_e_pi_PF->Integral(k+1,Nbin2D)/electron_highPU->Pt[0]->Integral();
+                float fr2=pion_highPU->mva_e_pi_PF->Integral(k+1,Nbin2D)/pion_highPU->Pt[0]->Integral();
                 x_pf_hpu[k]=fr1;
                 y_pf_hpu[k]=fr2;
                 cout<<"highpu:"<<fr1<<" "<<fr2<<endl;
@@ -529,8 +484,8 @@ void SLPlotter::MakeEffvsEffPlot(TString &process){
         TGraph *gr_pf_hpu=new TGraph(Nbin2D,x_pf_hpu,y_pf_hpu);
 
         for(int k=0;k<Nbin2D;k++){
-                float fr1=electron->mva_e_pi_PF->Integral(k+1,Nbin2D)/electron->Pt_gen_all->Integral();
-                float fr2=pion->mva_e_pi_PF->Integral(k+1,Nbin2D)/pion->Pt_gen_all->Integral();
+                float fr1=electron->mva_e_pi_PF->Integral(k+1,Nbin2D)/electron->Pt[0]->Integral();
+                float fr2=pion->mva_e_pi_PF->Integral(k+1,Nbin2D)/pion->Pt[0]->Integral();
                 x_pf_all[k]=fr1;
                 y_pf_all[k]=fr2;
                 cout<<"highpu:"<<fr1<<" "<<fr2<<endl;
@@ -632,20 +587,28 @@ void SLPlotter::MakeEffvsEffPlot(TString &process){
 void SLPlotter::TheFill(HistoMaker *obj,EventElecComm *Evt){
         int flagEta=fabs(Evt->etaGen)<1.4?0:1;
 
-        obj->Pt_gen_all->Fill(Evt->ptGen);
-        obj->Eta_gen_all->Fill(Evt->etaGen);
+        obj->Pt[0]->Fill(Evt->ptGen);
+        obj->Eta[0]->Fill(Evt->etaGen);
         if(Evt->isMatchedWithASeed==1){
-	      	obj->Pt_gen_MatchedWithASeed->Fill(Evt->ptGen);
-                obj->Eta_gen_MatchedWithASeed->Fill(Evt->etaGen);
+	      	obj->Pt[1]->Fill(Evt->ptGen);
+                obj->Eta[1]->Fill(Evt->etaGen);
+        }
+	if(Evt->isEcalDrivenSeeded){
+		obj->Pt[2]->Fill(Evt->ptGen);
+                obj->Eta[2]->Fill(Evt->etaGen);
+	}
+	if(Evt->isEcalDrivenSeeded || Evt->isMatchedWithASeed){
+                obj->Pt[3]->Fill(Evt->ptGen);
+                obj->Eta[3]->Fill(Evt->etaGen);
         }
 	if(Evt->isMatchedWithAGedGsfElec==1 && Evt->mva_e_pi>-0.1){
-        	obj->Pt_gen_MatchedWithAGedGsfElec->Fill(Evt->ptGen);
-                obj->Eta_gen_MatchedWithAGedGsfElec->Fill(Evt->etaGen);
+        	obj->Pt[4]->Fill(Evt->ptGen);
+                obj->Eta[4]->Fill(Evt->etaGen);
 		obj->mva_e_pi->Fill(Evt->mva_e_pi);
 	}
 	if(Evt->isMatchedWithAPFElec==1 && Evt->mva_e_pi_PF>-0.1){
-                obj->Pt_gen_MatchedWithAPFElec->Fill(Evt->ptGen);
-                obj->Eta_gen_MatchedWithAPFElec->Fill(Evt->etaGen);
+                obj->Pt[5]->Fill(Evt->ptGen);
+                obj->Eta[5]->Fill(Evt->etaGen);
                 obj->mva_e_pi_PF->Fill(Evt->mva_e_pi_PF);
         }		
 	//cout<<"histo integral "<<obj->Pt_gen_MatchedWithASeed->Integral()<<" "<<obj->Eta_gen_MatchedWithASeed->Integral()<<endl;	
@@ -659,10 +622,10 @@ void SLPlotter::FillHistos(){
 		bool basicselection= Evt->ptGen>2 && fabs(Evt->etaGen)<2.4 ;
         	bool isfromB=(Evt->origin==4 || Evt->origin==6);
         	bool isfromD=(Evt->origin==2);
+		bool isfromV=(Evt->origin==1);
         	bool isfromX=(Evt->origin==0);
 	//	if(Evt->ptGen>2 && fabs(Evt->etaGen)<2.4)cout<<Evt->ptGen<<" "<<Evt->etaGen<<" "<<isfromB<<" "<<abs(Evt->pdgId)<<endl;
 		if(basicselection && isfromB && abs(Evt->pdgId)==11){
-	//		cout<<"an electron spotted"<<endl;
 			TheFill(electron,Evt);
 			if(Evt->nPV<30){
 				TheFill(electron_lowPU,Evt);
@@ -674,6 +637,10 @@ void SLPlotter::FillHistos(){
 				TheFill(electron_highPU,Evt);
 			}
                 }
+		if(basicselection && isfromV && abs(Evt->pdgId)==11){
+                        TheFill(electron_isolated,Evt);
+                }
+
 		if(basicselection && abs(Evt->pdgId)==211){
 			TheFill(pion,Evt);
 			if(Evt->nPV<30){
@@ -706,7 +673,10 @@ void SLPlotter::FillHistos(){
 	electron->Combine();
 	electron_lowPU->Combine();
 	electron_highPU->Combine();
+	electron_isolated->Combine();
 	pion->Combine();
+	pion_lowPU->Combine();
+	pion_highPU->Combine();
 	kaon->Combine();
 
 
@@ -842,10 +812,10 @@ void PlotTogether::EffPlotCombination(){
 		plot[u]->setTDRStyle();
 		plot[u]->initialize();
 		plot[u]->FillHistos();
-		SeedEffPt[u]=plot[u]->electron->EfficiencyVsPt_Seed;
-       		SeedEffEta[u]=plot[u]->electron->EfficiencyVsEta_Seed;
-		GEDEffPt[u]=plot[u]->electron->EfficiencyVsPt_GedGsfElec;
-                GEDEffEta[u]=plot[u]->electron->EfficiencyVsEta_GedGsfElec;	
+		SeedEffPt[u]=plot[u]->electron->EffPt[1];
+       		SeedEffEta[u]=plot[u]->electron->EffEta[1];
+		GEDEffPt[u]=plot[u]->electron->EffPt[4];
+                GEDEffEta[u]=plot[u]->electron->EffEta[4];	
 		SeedEffPt[u]->SetMarkerColor(1+u);
                 SeedEffEta[u]->SetMarkerColor(1+u);
                 GEDEffPt[u]->SetMarkerColor(1+u);

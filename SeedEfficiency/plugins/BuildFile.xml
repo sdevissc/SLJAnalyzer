@@ -9,5 +9,6 @@
 <use name="DataFormats/EgammaCandidates"/>
 <use name="SimTracker/Records"/>
 <use name="SimTracker/TrackAssociation"/>
-<use   name="RecoParticleFlow/PFTracking"/>
+<use name="RecoParticleFlow/PFTracking"/>
+<use name="RecoJets/JetProducers"/>
 <flags EDM_PLUGIN="1"/>

@@ -55,13 +55,20 @@ Int_t		pdgId;
    Int_t           inRecoJet;
    Int_t           isMatchedWithASeed;
    Int_t 	   isEcalDrivenSeeded;
+   Int_t           isDeltaRMatchedWithASeed;
+   Int_t           isDeltaREcalDrivenSeeded;
    Float_t         gedgsfElecPt;
    Float_t         gedgsfElecEta;
    Float_t         gedgsfElecPhi;
    Int_t           isMatchedWithAGedGsfElec;	
    Int_t           isMatchedWithAPFElec;
    Float_t 	   mva_e_pi;
-   Float_t         mva_e_pi_PF;
+   Float_t         themva;	
+   Float_t         mva;
+   Float_t 	   pf_pt;
+   Float_t         pf_isol;
+	  Int_t         ecalseed;
+          Int_t         trkseed;
    // List of branches
 TBranch        *b_origin;   //!
    TBranch        *b_pdgId;   //!	
@@ -96,13 +103,20 @@ TBranch        *b_origin;   //!
    TBranch        *b_inRecoJet;   //!
    TBranch        *b_isMatchedWithASeed;   //!
    TBranch 	  *b_isEcalDrivenSeeded;
+  TBranch        *b_isDeltaRMatchedWithASeed;   //!
+   TBranch        *b_isDeltaREcalDrivenSeeded;
    TBranch        *b_gedgsfElecPt;   //!
    TBranch        *b_gedgsfElecEta;   //!
    TBranch        *b_gedgsfElecPhi;   //!
    TBranch        *b_isMatchedWithAGedGsfElec;   //!	
    TBranch        *b_isMatchedWithAPFElec;   //! 
    TBranch        *b_mva_e_pi;   //!
-   TBranch        *b_mva_e_pi_PF;
+   TBranch        *b_themva;
+   TBranch        *b_mva;
+   TBranch        *b_pf_pt;
+   TBranch        *b_pf_isol;
+   TBranch        *b_ecalseed;
+   TBranch        *b_trkseed;
 
    EventElecComm( TString filename );
    virtual ~EventElecComm();
@@ -227,12 +241,19 @@ void EventElecComm::Init(TTree *tree)
    fChain->SetBranchAddress("isMatchedWithASeed", &isMatchedWithASeed, &b_isMatchedWithASeed);
    fChain->SetBranchAddress("isEcalDrivenSeeded",&isEcalDrivenSeeded,&b_isEcalDrivenSeeded);
    fChain->SetBranchAddress("gedgsfElecPt", &gedgsfElecPt, &b_gedgsfElecPt);
+   fChain->SetBranchAddress("isDeltaRMatchedWithASeed", &isDeltaRMatchedWithASeed, &b_isDeltaRMatchedWithASeed);
+   fChain->SetBranchAddress("isDeltaREcalDrivenSeeded",&isDeltaREcalDrivenSeeded,&b_isDeltaREcalDrivenSeeded);
    fChain->SetBranchAddress("gedgsfElecEta", &gedgsfElecEta, &b_gedgsfElecEta);
    fChain->SetBranchAddress("gedgsfElecPhi", &gedgsfElecPhi, &b_gedgsfElecPhi);
    fChain->SetBranchAddress("isMatchedWithAGedGsfElec", &isMatchedWithAGedGsfElec, &b_isMatchedWithAGedGsfElec);
    fChain->SetBranchAddress("isMatchedWithAPFElec", &isMatchedWithAPFElec, &b_isMatchedWithAPFElec);
    fChain->SetBranchAddress("mve_e_pi", &mva_e_pi, &b_mva_e_pi);
-   fChain->SetBranchAddress("mva_e_pi_PF", &mva_e_pi_PF, &b_mva_e_pi_PF);
+   fChain->SetBranchAddress("mva", &mva, &b_mva);
+   fChain->SetBranchAddress("pf_pt", &pf_pt, &b_pf_pt);
+   fChain->SetBranchAddress("pf_isol", &pf_isol, &b_pf_isol);
+   fChain->SetBranchAddress("ecalseed", &ecalseed, &b_ecalseed);
+   fChain->SetBranchAddress("trkseed", &trkseed, &b_trkseed);
+
    Notify();
 }
 

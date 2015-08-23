@@ -48,7 +48,7 @@ class RecoToGenFiller{
 	inline ~RecoToGenFiller();
 	inline void initRecoToGenFillerObject();
 	inline void WriteInFileAndCloseIt();
-	TTree *tree_purity;
+	TTree *tree_purity,*tree_efficiency;
 	TTree *tree_purity_GenLepB;
 	TTree *tree_purity_GenLepV;
 	TTree *tree_purity_Hadrons;
@@ -111,6 +111,9 @@ class RecoToGenFiller{
         float ip3d;
         float ip3dSig;
 	float mva_e_pi;
+	float mva;
+	int ecalseed;
+	int trkseed;
 	float weight;
 	int fromConversion;
 	float sip2d;
@@ -120,6 +123,7 @@ class RecoToGenFiller{
         float ratio;
         float ratioRel;
 	int fl;
+	
 };
 
 RecoToGenFiller::RecoToGenFiller(const TString & tag){
@@ -179,6 +183,9 @@ RecoToGenFiller::RecoToGenFiller(const TString & tag){
         tree_purity_GenLepB->Branch("ip3d",&ip3d,"ip3d/F");
         tree_purity_GenLepB->Branch("ip3dSig",&ip3dSig,"ip3dSig/F");
 	tree_purity_GenLepB->Branch("mva_e_pi",&mva_e_pi,"mva_e_pi/F");
+	tree_purity_GenLepB->Branch("ecalseed",&ecalseed,"ecalseed/I");
+	tree_purity_GenLepB->Branch("trkseed",&trkseed,"trkseed/I");
+	tree_purity_GenLepB->Branch("mva",&mva,"mva/F");
 	tree_purity_GenLepB->Branch("weight",&weight,"weight/F");
 	tree_purity_GenLepB->Branch("fromConversion",&fromConversion,"fromConversion/I");
 // BTagb training
@@ -194,12 +201,14 @@ RecoToGenFiller::RecoToGenFiller(const TString & tag){
 	tree_purity_Hadrons=(TTree*)tree_purity_GenLepB->CloneTree();
 	tree_purity_OtherElec=(TTree*)tree_purity_GenLepB->CloneTree();
 	tree_purity_OtherX=(TTree*)tree_purity_GenLepB->CloneTree();
+	tree_efficiency=(TTree*)tree_purity_GenLepB->CloneTree();
         tree_purity=(TTree*)tree_purity_GenLepB->CloneTree();
 
 	tree_purity_GenLepV->SetName("tree_purity_GenLepV");
         tree_purity_Hadrons->SetName("tree_purity_Hadrons");
         tree_purity_OtherElec->SetName("tree_purity_OtherElec");
         tree_purity_OtherX->SetName("tree_purity_OtherX");
+	tree_efficiency->SetName("tree_efficiency");
         tree_purity->SetName("tree_purity");
 	
 }
@@ -258,6 +267,9 @@ void RecoToGenFiller::initRecoToGenFillerObject(){
 	ip3d=-777;
 	ip3dSig=-777;
 	mva_e_pi = -777.0;
+	mva = -777.0;
+	ecalseed=-777.0;
+	trkseed=-777.0;
 	weight=777.0;
 	fromConversion=-777.0;
         sip2d = -777.0;
@@ -279,6 +291,7 @@ void RecoToGenFiller::WriteInFileAndCloseIt(){
 	tree_purity_Hadrons->Write();
         tree_purity_OtherElec->Write();
         tree_purity_OtherX->Write();
+	tree_efficiency->Write();
 	f->Close();
 }
 RecoToGenFiller::~RecoToGenFiller(){};

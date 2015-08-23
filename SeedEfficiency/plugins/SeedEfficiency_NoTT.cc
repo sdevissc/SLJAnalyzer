@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// Package:    SoftElectronInJetAnalyzer/SeedEfficiency
-// Class:      SeedEfficiency
+// Package:    SoftElectronInJetAnalyzer/SeedEfficiency_noTT
+// Class:      SeedEfficiency_noTT
 // 
-/**\class SeedEfficiency SeedEfficiency.cc SoftElectronInJetAnalyzer/SeedEfficiency/plugins/SeedEfficiency.cc
+/**\class SeedEfficiency_noTT SeedEfficiency_noTT.cc SoftElectronInJetAnalyzer/SeedEfficiency_noTT/plugins/SeedEfficiency_noTT.cc
 
  Description: [one line class summary]
 
@@ -58,7 +58,6 @@
 #include "DataFormats/EgammaReco/interface/ElectronSeedFwd.h"
 #include "DataFormats/EgammaReco/interface/ElectronSeed.h"
 #include "DataFormats/JetReco/interface/GenJet.h"
-
 //
 // class declaration
 //
@@ -66,10 +65,10 @@ using namespace edm;
 using namespace std;
 using namespace reco;
 
-class SeedEfficiency : public edm::EDAnalyzer {
+class SeedEfficiency_noTT : public edm::EDAnalyzer {
    public:
-      explicit SeedEfficiency(const edm::ParameterSet&);
-      ~SeedEfficiency();
+      explicit SeedEfficiency_noTT(const edm::ParameterSet&);
+      ~SeedEfficiency_noTT();
 
       static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
@@ -88,7 +87,7 @@ class SeedEfficiency : public edm::EDAnalyzer {
       bool  isaV( int );
       int GetOrigin(reco::GenParticle&);
       bool UseRECO, Verbose;
-      InputTag PVerTag,gedgsfElectronTag_,genParticleTag_,genJetTag_,TrackTag_,TrackingParticleTag_;
+	InputTag PVerTag,gedgsfElectronTag_,genParticleTag_,genJetTag_,TrackTag_,TrackingParticleTag_;
       int minHits;
       GenToRecoFiller *gtrf;
       Handle<reco::VertexCollection> PrimaryVetices;
@@ -100,7 +99,7 @@ class SeedEfficiency : public edm::EDAnalyzer {
       Handle<reco::GsfElectronCollection> gedgsfCandidates;
       Handle<reco::GsfPFRecTrackCollection> gsfPfRecTracksCollection ;
       Handle<reco::GsfTrackCollection> gTCol;
-      Handle<reco::GenJetCollection> JetMC;
+	Handle<reco::GenJetCollection> JetMC;
 
       const reco::Vertex* vertex;	
       int nPV;
@@ -109,7 +108,7 @@ class SeedEfficiency : public edm::EDAnalyzer {
       reco::RecoToSimCollection theRecoToSimColl;
       GsfElectronCollection gedgsfCollection ;
       GenParticleCollection gpc ;
-      GenJetCollection gjc;
+	GenJetCollection gjc;
       reco::VertexCollection pvc;
       bool goodvertex;
       reco::GsfPFRecTrackCollection  gsfpfTk;
@@ -127,14 +126,14 @@ class SeedEfficiency : public edm::EDAnalyzer {
 //
 // constructors and destructor
 //
-SeedEfficiency::SeedEfficiency(const edm::ParameterSet& iConfig):
+SeedEfficiency_noTT::SeedEfficiency_noTT(const edm::ParameterSet& iConfig):
         UseRECO(iConfig.getParameter<bool>         ("UseRECO") ),
         Verbose(iConfig.getParameter<bool>         ("Verbose") ),
 	PVerTag(iConfig.getParameter<edm::InputTag>("PVerTag") ),
         gedgsfElectronTag_(iConfig.getParameter<edm::InputTag>("gedgsfElectronTag")),
         genParticleTag_(iConfig.getParameter<edm::InputTag>("genParticleTag")),
 	genJetTag_(iConfig.getParameter<edm::InputTag>("genJetTag")),
-        TrackTag_(iConfig.getParameter<edm::InputTag>("tracksTag")),
+	TrackTag_(iConfig.getParameter<edm::InputTag>("tracksTag")),
         TrackingParticleTag_(iConfig.getParameter<edm::InputTag>("TrackingParticleTag")),
         minHits(iConfig.getParameter<unsigned int>("minHits"))
 {
@@ -146,7 +145,7 @@ SeedEfficiency::SeedEfficiency(const edm::ParameterSet& iConfig):
 
 
 
-SeedEfficiency::~SeedEfficiency()
+SeedEfficiency_noTT::~SeedEfficiency_noTT()
 {
  
    // do anything here that needs to be done at desctruction time
@@ -161,43 +160,38 @@ SeedEfficiency::~SeedEfficiency()
 
 // ------------ method called for each event  ------------
 void
-SeedEfficiency::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
+SeedEfficiency_noTT::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
+	cout<<"test"<<endl;
    using namespace edm;
         iEvent.getByLabel(PVerTag, PrimaryVetices);
         iEvent.getByLabel(genParticleTag_, GPC);
         iEvent.getByLabel(gedgsfElectronTag_, gedgsfCandidates);
         iEvent.getByLabel("pfTrackElec",gsfPfRecTracksCollection);
 	iEvent.getByLabel( "electronGsfTracks", gTCol);
-        iEvent.getByLabel(genJetTag_, JetMC); 
+	iEvent.getByLabel(genJetTag_, JetMC);
+	iEvent.getByLabel(TrackTag_, theTrackColl);
+	cout<<"test1"<<endl;
         if(!PrimaryVetices.isValid() || PrimaryVetices->empty()) return;
         vertex=&PrimaryVetices->front();
         nPV=PrimaryVetices->size();
-	iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder", builder);
-        transientTrackBuilder=builder.product();
-	const TrackAssociatorBase* theAssociatorByHits(NULL);
-        if(UseRECO){
-		iEvent.getByLabel(TrackTag_, theTrackColl);
-                iEvent.getByLabel(TrackingParticleTag_,theTrackingPartColl);
-                iSetup.get<TrackAssociatorRecord>().get("quickTrackAssociatorByHits", theHitsAssociator);
-                theAssociatorByHits = (TrackAssociatorBase*)theHitsAssociator.product();
-                theSimToRecoColl=theAssociatorByHits->associateSimToReco(theTrackColl, theTrackingPartColl, &iEvent, &iSetup);
-		theRecoToSimColl=theAssociatorByHits->associateRecoToSim(theTrackColl, theTrackingPartColl, &iEvent, &iSetup);
-        }
 	gedgsfCollection = *(gedgsfCandidates.product());
         //Loading the genParticles
+        cout<<"test2"<<endl;
         gpc = *(GPC.product());
-        gjc = *(JetMC.product());
+	gjc = *(JetMC.product());
         pvc = *(PrimaryVetices);
 	gsftc=*(gTCol.product());
         goodvertex=!pvc.empty()?true:false;
         if(goodvertex)vertex=&pvc.front();
+	cout<<"test3"<<endl;
         const View<Track> tC = *(theTrackColl.product());
         gsfpfTk=*(gsfPfRecTracksCollection.product());
+	cout<<"test4"<<endl;
 	EffEstimator();
 }
 
-void SeedEfficiency::EffEstimator(){
+void SeedEfficiency_noTT::EffEstimator(){
         for (int j = 0 ; j < (int)gpc.size(); ++j)
         {
                 bool isFinal=gpc[j].status()==1;
@@ -208,25 +202,27 @@ void SeedEfficiency::EffEstimator(){
                         gtrf->pdgId=gpc[j].pdgId();
                         gtrf->origin=GetOrigin(gpc[j]);
 			if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"We have an electron or pion or kaon with pdgId="<<gtrf->pdgId<<" origin="<<gtrf->origin<<" pt="<<gpc[j].pt()<<std::endl;
-
                         gtrf->ptGen=gpc[j].pt();
                         gtrf->etaGen=gpc[j].eta();
                         gtrf->phiGen=gpc[j].phi();
                         gtrf->pGen=gpc[j].p();
-//                        bool inRecoJet=false;
+                     //   bool inRecoJet=false;
                         Track track;
-                       // float sharedHits = 0;
-                      //  float dR = 100;
-                      //  int indexTrack;
-                        RefToBase<Track> tr;
-			cout<<"Checking the jet (size="<<gjc.size()<<")"<<endl;
-			for (int k = 0 ; k < (int)gjc.size(); ++k){
-				cout<<"jet "<<k<<" dR="<<deltaR(gpc[j].eta(), gpc[j].phi(), gjc[k].eta(),gjc[k].phi())<<endl;
-				if(gjc[k].pt()>25 && deltaR(gpc[j].eta(), gpc[j].phi(), gjc[k].eta(),gjc[k].phi())<0.5){
-					cout<<"Distance to a GenJet smaller than 0.5---> inGenJet=1"<<endl;
-					gtrf->inGenJet=1;
+                     //   float sharedHits = 0;
+                     //   float dR = 100;
+                     //   int indexTrack;
+                     	cout<<"Checking the jet (size="<<gjc.size()<<")"<<endl;
+                        for (int k = 0 ; k < (int)gjc.size(); ++k){
+				if(gjc[k].pt()>25 ){
+                                	cout<<"jet "<<k<<" Pt= "<<gjc[k].pt()<<endl;
+                                	if(deltaR(gpc[j].eta(), gpc[j].phi(), gjc[k].eta(),gjc[k].phi())<0.5){
+                                	        cout<<"Distance to a GenJet smaller than 0.5---> inGenJet=1"<<endl;
+                                	        gtrf->inGenJet=1;
+                                	}
 				}
-			}
+                        }
+
+                        RefToBase<Track> tr;
 			if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"Checking result from findMatch"<<std::endl;
 /*                        bool result = findMatch(gpc[j], theTrackingPartColl, theSimToRecoColl,track, indexTrack, dR, sharedHits,tr);
                         if ( result ) {
@@ -246,48 +242,13 @@ void SeedEfficiency::EffEstimator(){
 					cout<<"GsfPFRecTrack: deltaR="<<deltaR(gpc[j].eta(), gpc[j].phi(), gsfpfTk[u].gsfTrackRef().get()->eta(), gsfpfTk[u].gsfTrackRef().get()->phi())
 						<<"  pt diff rel"<<fabs(gpc[j].pt()-gsfpfTk[u].gsfTrackRef().get()->pt())/gpc[j].pt()<<endl;
 				}
-//*************************
-//	TEST GEN-TT-Track matching using SimToReco Associator
-				
-/*				if(tr.get()==gsfpfTk[u].gsfTrackRef().get()){
-					if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"-->TRACKER DRIVEN SEEDED with seed number "<<u
-						<<" tr.eta="<<tr.get()->eta()<<" track.eta="<<gsfpfTk[u].gsfTrackRef().get()->eta()
-						<<" tr.eta="<<tr.get()->phi()<<" track.eta="<<gsfpfTk[u].gsfTrackRef().get()->phi()
-						<<std::endl;
-                                        gtrf->isMatchedWithASeed=1;
-                                        gtrf->gsftrkSeedPt=gsfpfTk[u].gsfTrackRef().get()->pt();
-                                        gtrf->gsftrkSeedEta=gsfpfTk[u].gsfTrackRef().get()->eta();
-                                        gtrf->gsftrkSeedPhi=gsfpfTk[u].gsfTrackRef().get()->phi();
-					gtrf->DeltaRGenMatchedwithTT=deltaR(gpc[j].eta(), gpc[j].phi(), tr.get()->eta(), tr.get()->phi());
-                                }
-*/				
-//*************************
-//	Test GEN-Track macthing using just DeltaR
-				if(deltaR(gpc[j].eta(), gpc[j].phi(), gsfpfTk[u].gsfTrackRef().get()->eta(), gsfpfTk[u].gsfTrackRef().get()->phi())<0.01 /*&& fabs(gpc[j].pt()-gsfpfTk[u].gsfTrackRef().get()->pt())/gpc[j].pt()<0.3*/){
+				if(deltaR(gpc[j].eta(), gpc[j].phi(), gsfpfTk[u].gsfTrackRef().get()->eta(), gsfpfTk[u].gsfTrackRef().get()->phi())<0.01 ){
                                         if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"-->TRACKER DRIVEN SEEDED DeltaRMatched with seed number "<<u<<std::endl;
                                         gtrf->isDeltaRMatchedWithASeed=1;
 					
                                 }
 				
 				if(gtrf->isDeltaRMatchedWithASeed==0 && gtrf->isMatchedWithASeed==1)cout<<"************************* DeltaR Gen Track is "<<deltaR(gpc[j].eta(), gpc[j].phi(), gsfpfTk[u].gsfTrackRef().get()->eta(), gsfpfTk[u].gsfTrackRef().get()->phi())<<endl;
-//********************
-//	TEST GEN-TT-Track matching using RecoToSim Associator
-/*                		RefToBase<Track> tkRef  = RefToBase<Track>(gsfpfTk[u].gsfTrackRef() );
-				if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"-->Checking list of TT objects linked to GsfPfRefTrack: "<<theRecoToSimColl.size()<<std::endl;
-                		if(theRecoToSimColl.find(tkRef) != theRecoToSimColl.end()){
-                        		TrackingParticleRef tpr = theRecoToSimColl[tkRef].begin()->first;
-                        		TrackingParticle::genp_iterator a, b = tpr->genParticle_begin(), e = tpr->genParticle_end();
-					if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"---->Now Checking list of genparticle attached to the TT"<<std::endl;
-                        		for( a = b; a != e; ++ a ) {
-						const reco::GenParticle * p = a->get();
-                                		reco::GenParticle *ncp=(reco::GenParticle*)p;
-						if(ncp->pt()==gpc[j].pt() && fabs(gpc[j].pdgId())==11 && isKineOk)cout<<"SeedTrack->GEN OK with seed number "<<u<<endl;
-						if(ncp->pt()==gpc[j].pt())gtrf->isSeedtoTTToGenMatched=1;
-						if(fabs(gpc[j].pdgId())==11 && isKineOk)std::cout<<"---->checking genparticle: "<<ncp->eta()<<" "<<gpc[j].eta()<<std::endl;
-                        		}
-                		}
-*/
-//***************************
                         }
 			if(fabs(gpc[j].pdgId())==11 && isKineOk)cout<<"Now checking the ecalSeeding("<<gsftc.size()<<" in total)"<<endl;
 			for (int u = 0 ; u < (int)gsftc.size(); ++u)
@@ -330,7 +291,7 @@ void SeedEfficiency::EffEstimator(){
 }
 
 
-bool SeedEfficiency::isInnerMost(const reco::Track track1, const reco::Track track2, bool& sameLayer) {
+bool SeedEfficiency_noTT::isInnerMost(const reco::Track track1, const reco::Track track2, bool& sameLayer) {
   reco::HitPattern hitPattern1 = track1.hitPattern();
   reco::HitPattern hitPattern2 = track2.hitPattern();
 
@@ -356,7 +317,7 @@ bool SeedEfficiency::isInnerMost(const reco::Track track1, const reco::Track tra
   }
 }
 
-int SeedEfficiency::GetOrigin(reco::GenParticle& part){
+int SeedEfficiency_noTT::GetOrigin(reco::GenParticle& part){
         int isBanAncestor=0;
         int isDanAncestor=0;
         int isVanAncestor=0;
@@ -399,55 +360,64 @@ int SeedEfficiency::GetOrigin(reco::GenParticle& part){
                 }
         }
         int result=4*isBanAncestor+2*isDanAncestor+isVanAncestor;
+	cout<<"returning ============> "<<result<<endl;
         return result;
 }
 
-bool SeedEfficiency::isaV(int pidAbs){
+bool SeedEfficiency_noTT::isaV(int pidAbs){
         int res=false;
         if(pidAbs==24 || pidAbs==23 || pidAbs==22)res=true;
         return res;
 }
 
 
-bool SeedEfficiency::isaBhadron(int pidAbs){
-	cout<<"is a B hadron?"<<endl;
+bool SeedEfficiency_noTT::isaBhadron(int pidAbs){
+        cout<<"is a B hadron? pdgId="<<pidAbs<<endl;
         bool isB = false;
         if(pidAbs>500){
-		cout<<"	pdgId>500? "<<pidAbs<<endl;
+                cout<<" pdgId="<<pidAbs<<endl;
                 pidAbs/= 100;
 
                 if(pidAbs<60 && pidAbs>50)pidAbs/= 10;
-		cout<<"   after division by 100 or 1000: "<<pidAbs<<endl;
+                cout<<"   after division by 100 or 1000: "<<pidAbs<<endl;
                 int mod10 = pidAbs % 5;
-		cout<<"   now the modulo is : "<<mod10<<endl;
+                cout<<"   now the modulo is : "<<mod10<<endl;
                 if(mod10 == 0) {
                         isB = true;
-			cout<<"   ===> is a B: "<<mod10<<endl;
+                        cout<<"   ===> is a B!"<<mod10<<endl;
                 }
         }
         else  {
+		cout<<"    NO"<<pidAbs<<endl;
         }
         return isB;
 }
 
-bool SeedEfficiency::isaDhadron(int pidAbs){
 
+bool SeedEfficiency_noTT::isaDhadron(int pidAbs){
+	cout<<"is a D hadron? pdgId="<<pidAbs<<endl;
         bool isD = false;
         if(pidAbs>400){
+		cout<<" pdgId="<<pidAbs<<endl;
                 pidAbs/= 100;
                 if(pidAbs<50 && pidAbs>40)pidAbs/= 10;
+		cout<<"   after division by 100 or 1000: "<<pidAbs<<endl;
                 int mod10 = pidAbs % 4;
+		cout<<"   now the modulo is : "<<mod10<<endl;
 
                 if(mod10 == 0 && pidAbs<10) {
                         isD = true;
+			cout<<"   ===> is a D!"<<mod10<<endl;
                 }
         }
         else{
+		cout<<"    NO"<<pidAbs<<endl;
+
         }
         return isD;
 }
 
-bool SeedEfficiency::trackFilter(const reco::TrackRef &track) const
+bool SeedEfficiency_noTT::trackFilter(const reco::TrackRef &track) const
 {
         if (track->hitPattern().numberOfValidHits() < (int)minHits)
                 return false;
@@ -457,7 +427,7 @@ bool SeedEfficiency::trackFilter(const reco::TrackRef &track) const
         return true;
 }
 
-bool SeedEfficiency::findMatch(const reco::Candidate& genCand,
+bool SeedEfficiency_noTT::findMatch(const reco::Candidate& genCand,
                               Handle<TrackingParticleCollection> theTrackingPartColl,
                               reco::SimToRecoCollection q,
                               reco::Track& track,
@@ -539,13 +509,13 @@ bool SeedEfficiency::findMatch(const reco::Candidate& genCand,
 
 // ------------ method called once each job just before starting event loop  ------------
 void 
-SeedEfficiency::beginJob()
+SeedEfficiency_noTT::beginJob()
 {
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
 void 
-SeedEfficiency::endJob() 
+SeedEfficiency_noTT::endJob() 
 {
 	gtrf->WriteInFileAndCloseIt();
 }
@@ -553,7 +523,7 @@ SeedEfficiency::endJob()
 // ------------ method called when starting to processes a run  ------------
 /*
 void 
-SeedEfficiency::beginRun(edm::Run const&, edm::EventSetup const&)
+SeedEfficiency_noTT::beginRun(edm::Run const&, edm::EventSetup const&)
 {
 }
 */
@@ -561,7 +531,7 @@ SeedEfficiency::beginRun(edm::Run const&, edm::EventSetup const&)
 // ------------ method called when ending the processing of a run  ------------
 /*
 void 
-SeedEfficiency::endRun(edm::Run const&, edm::EventSetup const&)
+SeedEfficiency_noTT::endRun(edm::Run const&, edm::EventSetup const&)
 {
 }
 */
@@ -569,7 +539,7 @@ SeedEfficiency::endRun(edm::Run const&, edm::EventSetup const&)
 // ------------ method called when starting to processes a luminosity block  ------------
 /*
 void 
-SeedEfficiency::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
+SeedEfficiency_noTT::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
 {
 }
 */
@@ -577,14 +547,14 @@ SeedEfficiency::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetu
 // ------------ method called when ending the processing of a luminosity block  ------------
 /*
 void 
-SeedEfficiency::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
+SeedEfficiency_noTT::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
 {
 }
 */
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
 void
-SeedEfficiency::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+SeedEfficiency_noTT::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   //The following says we do not know what parameters are allowed so do no validation
   // Please change this to state exactly what you do use, even if it is no parameters
   edm::ParameterSetDescription desc;
@@ -593,4 +563,4 @@ SeedEfficiency::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
 }
 
 //define this as a plug-in
-DEFINE_FWK_MODULE(SeedEfficiency);
+DEFINE_FWK_MODULE(SeedEfficiency_noTT);

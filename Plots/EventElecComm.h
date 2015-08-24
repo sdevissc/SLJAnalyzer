@@ -69,6 +69,10 @@ Int_t		pdgId;
    Float_t         pf_isol;
 	  Int_t         ecalseed;
           Int_t         trkseed;
+    Int_t id_veto;
+    Int_t id_loose;
+    Int_t id_medium;
+    Int_t id_tight;
    // List of branches
 TBranch        *b_origin;   //!
    TBranch        *b_pdgId;   //!	
@@ -117,6 +121,10 @@ TBranch        *b_origin;   //!
    TBranch        *b_pf_isol;
    TBranch        *b_ecalseed;
    TBranch        *b_trkseed;
+   TBranch 	  *b_id_veto;
+   TBranch        *b_id_loose;
+   TBranch        *b_id_medium;
+   TBranch        *b_id_tight;
 
    EventElecComm( TString filename );
    virtual ~EventElecComm();
@@ -253,7 +261,10 @@ void EventElecComm::Init(TTree *tree)
    fChain->SetBranchAddress("pf_isol", &pf_isol, &b_pf_isol);
    fChain->SetBranchAddress("ecalseed", &ecalseed, &b_ecalseed);
    fChain->SetBranchAddress("trkseed", &trkseed, &b_trkseed);
-
+   fChain->SetBranchAddress("id_veto", &id_veto, &b_id_veto);
+   fChain->SetBranchAddress("id_loose", &id_loose, &b_id_loose);
+   fChain->SetBranchAddress("id_medium", &id_medium, &b_id_medium);
+   fChain->SetBranchAddress("id_tight", &id_tight, &b_id_tight);
    Notify();
 }
 

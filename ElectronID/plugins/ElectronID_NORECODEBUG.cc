@@ -218,6 +218,7 @@ class ElectronID_NORECODEBUG : public edm::EDAnalyzer {
   edm::Handle<edm::ValueMap<bool> > loose_id_decisions;
   edm::Handle<edm::ValueMap<bool> > medium_id_decisions;
   edm::Handle<edm::ValueMap<bool> > tight_id_decisions; 
+  edm::Handle<edm::ValueMap<float> > mvaValues;
       const reco::Vertex* vertex;
       int nPV;
       GenParticleCollection gpc ;
@@ -229,7 +230,7 @@ class ElectronID_NORECODEBUG : public edm::EDAnalyzer {
       edm::EDGetTokenT<edm::ValueMap<bool> > eleLooseIdMapToken_;
       edm::EDGetTokenT<edm::ValueMap<bool> > eleMediumIdMapToken_;
       edm::EDGetTokenT<edm::ValueMap<bool> > eleTightIdMapToken_;
-	
+      edm::EDGetTokenT<edm::ValueMap<float> > mvaValuesMapToken_;
 };
 
 //
@@ -256,7 +257,8 @@ ElectronID_NORECODEBUG::ElectronID_NORECODEBUG(const edm::ParameterSet& iConfig)
   eleVetoIdMapToken_(consumes<edm::ValueMap<bool> >(iConfig.getParameter<edm::InputTag>("eleVetoIdMap"))),
   eleLooseIdMapToken_(consumes<edm::ValueMap<bool> >(iConfig.getParameter<edm::InputTag>("eleLooseIdMap"))),
   eleMediumIdMapToken_(consumes<edm::ValueMap<bool> >(iConfig.getParameter<edm::InputTag>("eleMediumIdMap"))),
-  eleTightIdMapToken_(consumes<edm::ValueMap<bool> >(iConfig.getParameter<edm::InputTag>("eleTightIdMap")))
+  eleTightIdMapToken_(consumes<edm::ValueMap<bool> >(iConfig.getParameter<edm::InputTag>("eleTightIdMap"))),
+  mvaValuesMapToken_(consumes<edm::ValueMap<float> >(iConfig.getParameter<edm::InputTag>("mvaValuesMap")))
 {
 	cout<<"testcons"<<endl;
         rtgf= new GenToRecoFiller("PF");
@@ -296,6 +298,8 @@ ElectronID_NORECODEBUG::analyze(const edm::Event& iEvent, const edm::EventSetup&
   iEvent.getByToken(eleLooseIdMapToken_ ,loose_id_decisions);
   iEvent.getByToken(eleMediumIdMapToken_,medium_id_decisions);
   iEvent.getByToken(eleTightIdMapToken_,tight_id_decisions);
+  edm::Handle<edm::ValueMap<float> > mvaValues;
+  iEvent.getByToken(mvaValuesMapToken_,mvaValues);
 
         if(!PrimaryVetices.isValid() || PrimaryVetices->empty()) return;
         vertex=&PrimaryVetices->front();
@@ -325,7 +329,6 @@ void ElectronID_NORECODEBUG::PFElecFiller(){
 			for (reco::PFCandidateCollection::const_iterator  pfe=PFCandidates->begin(); pfe!=PFCandidates->end(); ++pfe){
 				if(pfe->particleId()==2 && deltaR(gpc[j].eta(), gpc[j].phi(), pfe->eta(),pfe->phi())<0.01){
 					GsfElectronRef elec=pfe->gsfElectronRef();
-					rtgf->mva=elec->mva_e_pi();
 					rtgf->ecalseed=elec->core()->ecalDrivenSeed();
 					rtgf->trkseed=elec->core()->trackerDrivenSeed();
 					rtgf->pf_pt=elec->pt();
@@ -339,6 +342,7 @@ void ElectronID_NORECODEBUG::PFElecFiller(){
     					rtgf->id_loose  = (*loose_id_decisions)[elec];
     					rtgf->id_medium  = (*medium_id_decisions)[elec];
 					rtgf->id_tight = (*tight_id_decisions)[elec];
+					rtgf->mva = (*mvaValues)[elec];
 				}
 			}
 			for (reco::GsfElectronCollection::const_iterator  gsf=GEDGsfElecs->begin(); gsf!=GEDGsfElecs->end(); ++gsf){

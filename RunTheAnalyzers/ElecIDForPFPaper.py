@@ -57,14 +57,15 @@ switchOnVIDElectronIdProducer(process, dataFormat)
 
 # define which IDs we want to produce
 my_id_modules = ['RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_PHYS14_PU20bx25_V2_cff',
-                 'RecoEgamma.ElectronIdentification.Identification.heepElectronID_HEEPV51_cff']
+                 'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_PHYS14_PU20bx25_nonTrig_V1_cff']
 
 #add them to the VID producer
 for idmod in my_id_modules:
     setupAllVIDIdsInModule(process,idmod,setupVIDElectronSelection)
 
-################################
+mvaValuesMap     = cms.InputTag("electronMVAValueMapProducer:ElectronMVAEstimatorRun2Phys14NonTrigValues"),
 
+###############################
 
 process.demo = cms.EDAnalyzer('ElectronID_NORECODEBUG',
  genParticleTag=cms.InputTag("genParticles"),
@@ -98,6 +99,7 @@ process.quickTrackAssociatorByHits.useClusterTPAssociation = cms.bool(True)
 process.load("SimTracker.TrackerHitAssociation.clusterTpAssociationProducer_cfi")
 
 process.p = cms.Path(
+   process.egmGsfElectronIDSequence *
   process.demo)
 process.schedule = cms.Schedule(process.p)
 

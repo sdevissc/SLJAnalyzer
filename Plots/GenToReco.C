@@ -23,7 +23,7 @@
 #include <TPaveStats.h>
 using namespace std;
 
-const int Nbin2D=1000; 
+const int Nbin2D=200; 
 
 template <class Type>
 void SetStyle(Type *a,int color, int style, int fillstyle, const TString& xtitle,const TString& ytitle, float min, float max){
@@ -426,15 +426,15 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
 
 void SLPlotter::MakeEffvsEffPlot(TString &process){
 	setTDRStyle();
-	TCanvas *can = new TCanvas("h", "bla",600,600);
+	TCanvas *can = new TCanvas("h", "bla",400,600);
         can->SetLeftMargin(0.17);
-        can->SetTopMargin(0.05);
+        can->SetTopMargin(0.07);
         can->SetRightMargin(0.05);
         can->SetBottomMargin(0.15);
 	ProcessName=process;
         float x_pf_all[6][Nbin2D],y_pf_all[6][Nbin2D];
-	 TGraph *gr_pf_all[6],*gr_pf_CutBased[12];
-	float x_frCutBased[12][1],y_frCutBased[12][1];
+	 TGraph *gr_pf_all[6],*gr_pf_CutBased[24];
+	float x_frCutBased[24][1],y_frCutBased[24][1];
         for(int k=0;k<Nbin2D;k++){
 			y_pf_all[0][k]=background[0]->mvaDiscr[0][0]->Integral(k+1,Nbin2D)/background[0]->mvaDiscr[0][0]->Integral();
 			y_pf_all[1][k]=background[0]->mvaDiscr[0][1]->Integral(k+1,Nbin2D)/background[0]->mvaDiscr[0][1]->Integral();
@@ -449,14 +449,27 @@ void SLPlotter::MakeEffvsEffPlot(TString &process){
                         x_pf_all[3][k]=electron_isolated[0]->mvaDiscr[1][1]->Integral(k+1,Nbin2D)/electron_isolated[0]->mvaDiscr[1][1]->Integral();
                         x_pf_all[4][k]=electron_isolated[0]->mvaDiscr[2][0]->Integral(k+1,Nbin2D)/electron_isolated[0]->mvaDiscr[2][0]->Integral();
                         x_pf_all[5][k]=electron_isolated[0]->mvaDiscr[2][1]->Integral(k+1,Nbin2D)/electron_isolated[0]->mvaDiscr[2][1]->Integral();
+
+			cout<<"Signal"<<endl;
+                        cout<<"**********"<<endl;
+                        cout<<"content: "<<electron_isolated[0]->mvaDiscr[0][0]->Integral(k+1,Nbin2D)<<" "<<electron_isolated[0]->mvaDiscr[0][0]->Integral()<<endl;
+                        cout<<"content: "<<electron_isolated[0]->mvaDiscr[0][1]->Integral(k+1,Nbin2D)<<" "<<electron_isolated[0]->mvaDiscr[0][1]->Integral()<<endl;
+                        cout<<"content: "<<electron_isolated[0]->mvaDiscr[1][0]->Integral(k+1,Nbin2D)<<" "<<electron_isolated[0]->mvaDiscr[1][0]->Integral()<<endl;
+                        cout<<"content: "<<electron_isolated[0]->mvaDiscr[1][1]->Integral(k+1,Nbin2D)<<" "<<electron_isolated[0]->mvaDiscr[1][1]->Integral()<<endl;
+                        cout<<"content: "<<electron_isolated[0]->mvaDiscr[2][0]->Integral(k+1,Nbin2D)<<" "<<electron_isolated[0]->mvaDiscr[2][0]->Integral()<<endl;
+                        cout<<"content: "<<electron_isolated[0]->mvaDiscr[2][1]->Integral(k+1,Nbin2D)<<" "<<electron_isolated[0]->mvaDiscr[2][1]->Integral()<<endl;
+			cout<<"Background"<<endl;	
+			cout<<"**********"<<endl;
 			cout<<"content: "<<background[0]->mvaDiscr[0][0]->Integral(k+1,Nbin2D)<<" "<<background[0]->mvaDiscr[0][0]->Integral()<<endl;
 			cout<<"content: "<<background[0]->mvaDiscr[0][1]->Integral(k+1,Nbin2D)<<" "<<background[0]->mvaDiscr[0][1]->Integral()<<endl;
 			cout<<"content: "<<background[0]->mvaDiscr[1][0]->Integral(k+1,Nbin2D)<<" "<<background[0]->mvaDiscr[1][0]->Integral()<<endl;
 			cout<<"content: "<<background[0]->mvaDiscr[1][1]->Integral(k+1,Nbin2D)<<" "<<background[0]->mvaDiscr[1][1]->Integral()<<endl;
 			cout<<"content: "<<background[0]->mvaDiscr[2][0]->Integral(k+1,Nbin2D)<<" "<<background[0]->mvaDiscr[2][0]->Integral()<<endl;
 			cout<<"content: "<<background[0]->mvaDiscr[2][1]->Integral(k+1,Nbin2D)<<" "<<background[0]->mvaDiscr[2][1]->Integral()<<endl;
-	cout<<"X: "<<x_pf_all[0][k]<<" "<<x_pf_all[1][k]<<" "<<x_pf_all[2][k]<<" "<<x_pf_all[3][k]<<" "<<x_pf_all[4][k]<<" "<<x_pf_all[5][k]<<endl;
-	cout<<"Y: "<<y_pf_all[0][k]<<" "<<y_pf_all[1][k]<<" "<<y_pf_all[2][k]<<" "<<y_pf_all[3][k]<<" "<<y_pf_all[4][k]<<" "<<y_pf_all[5][k]<<endl;
+
+		
+	cout<<"Signal     X: "<<x_pf_all[0][k]<<" "<<x_pf_all[1][k]<<" "<<x_pf_all[2][k]<<" "<<x_pf_all[3][k]<<" "<<x_pf_all[4][k]<<" "<<x_pf_all[5][k]<<endl;
+	cout<<"Background Y: "<<y_pf_all[0][k]<<" "<<y_pf_all[1][k]<<" "<<y_pf_all[2][k]<<" "<<y_pf_all[3][k]<<" "<<y_pf_all[4][k]<<" "<<y_pf_all[5][k]<<endl;
 	}
 			x_frCutBased[0][0]=electron_isolated[1]->mvaDiscr[0][0]->Integral()/electron_isolated[0]->mvaDiscr[0][0]->Integral();
 			x_frCutBased[1][0]=electron_isolated[1]->mvaDiscr[0][1]->Integral()/electron_isolated[0]->mvaDiscr[0][1]->Integral();
@@ -470,6 +483,19 @@ void SLPlotter::MakeEffvsEffPlot(TString &process){
                         x_frCutBased[9][0]=electron_isolated[2]->mvaDiscr[1][1]->Integral()/electron_isolated[0]->mvaDiscr[1][1]->Integral();
 			x_frCutBased[10][0]=electron_isolated[2]->mvaDiscr[2][0]->Integral()/electron_isolated[0]->mvaDiscr[2][0]->Integral();
                         x_frCutBased[11][0]=electron_isolated[2]->mvaDiscr[2][1]->Integral()/electron_isolated[0]->mvaDiscr[2][1]->Integral();
+                        x_frCutBased[12][0]=electron_isolated[3]->mvaDiscr[0][0]->Integral()/electron_isolated[0]->mvaDiscr[0][0]->Integral();
+                        x_frCutBased[13][0]=electron_isolated[3]->mvaDiscr[0][1]->Integral()/electron_isolated[0]->mvaDiscr[0][1]->Integral();
+                        x_frCutBased[14][0]=electron_isolated[3]->mvaDiscr[1][0]->Integral()/electron_isolated[0]->mvaDiscr[1][0]->Integral();
+                        x_frCutBased[15][0]=electron_isolated[3]->mvaDiscr[1][1]->Integral()/electron_isolated[0]->mvaDiscr[1][1]->Integral();
+                        x_frCutBased[16][0]=electron_isolated[3]->mvaDiscr[2][0]->Integral()/electron_isolated[0]->mvaDiscr[2][0]->Integral();
+                        x_frCutBased[17][0]=electron_isolated[3]->mvaDiscr[2][1]->Integral()/electron_isolated[0]->mvaDiscr[2][1]->Integral();
+                        x_frCutBased[18][0]=electron_isolated[4]->mvaDiscr[0][0]->Integral()/electron_isolated[0]->mvaDiscr[0][0]->Integral();
+                        x_frCutBased[19][0]=electron_isolated[4]->mvaDiscr[0][1]->Integral()/electron_isolated[0]->mvaDiscr[0][1]->Integral();
+                        x_frCutBased[20][0]=electron_isolated[4]->mvaDiscr[1][0]->Integral()/electron_isolated[0]->mvaDiscr[1][0]->Integral();
+                        x_frCutBased[21][0]=electron_isolated[4]->mvaDiscr[1][1]->Integral()/electron_isolated[0]->mvaDiscr[1][1]->Integral();
+                        x_frCutBased[22][0]=electron_isolated[4]->mvaDiscr[2][0]->Integral()/electron_isolated[0]->mvaDiscr[2][0]->Integral();
+                        x_frCutBased[23][0]=electron_isolated[4]->mvaDiscr[2][1]->Integral()/electron_isolated[0]->mvaDiscr[2][1]->Integral();
+
 
 			y_frCutBased[0][0]=background[1]->mvaDiscr[0][0]->Integral()/background[0]->mvaDiscr[0][0]->Integral();
                         y_frCutBased[1][0]=background[1]->mvaDiscr[0][1]->Integral()/background[0]->mvaDiscr[0][1]->Integral();
@@ -483,64 +509,207 @@ void SLPlotter::MakeEffvsEffPlot(TString &process){
                         y_frCutBased[9][0]=background[2]->mvaDiscr[1][1]->Integral()/background[0]->mvaDiscr[1][1]->Integral();
                         y_frCutBased[10][0]=background[2]->mvaDiscr[2][0]->Integral()/background[0]->mvaDiscr[2][0]->Integral();
                         y_frCutBased[11][0]=background[2]->mvaDiscr[2][1]->Integral()/background[0]->mvaDiscr[2][1]->Integral();	
+                        y_frCutBased[12][0]=background[3]->mvaDiscr[0][0]->Integral()/background[0]->mvaDiscr[0][0]->Integral();
+                        y_frCutBased[13][0]=background[3]->mvaDiscr[0][1]->Integral()/background[0]->mvaDiscr[0][1]->Integral();
+                        y_frCutBased[14][0]=background[3]->mvaDiscr[1][0]->Integral()/background[0]->mvaDiscr[1][0]->Integral();
+                        y_frCutBased[15][0]=background[3]->mvaDiscr[1][1]->Integral()/background[0]->mvaDiscr[1][1]->Integral();
+                        y_frCutBased[16][0]=background[3]->mvaDiscr[2][0]->Integral()/background[0]->mvaDiscr[2][0]->Integral();
+                        y_frCutBased[17][0]=background[3]->mvaDiscr[2][1]->Integral()/background[0]->mvaDiscr[2][1]->Integral();
+                        y_frCutBased[18][0]=background[4]->mvaDiscr[0][0]->Integral()/background[0]->mvaDiscr[0][0]->Integral();
+                        y_frCutBased[19][0]=background[4]->mvaDiscr[0][1]->Integral()/background[0]->mvaDiscr[0][1]->Integral();
+                        y_frCutBased[20][0]=background[4]->mvaDiscr[1][0]->Integral()/background[0]->mvaDiscr[1][0]->Integral();
+                        y_frCutBased[21][0]=background[4]->mvaDiscr[1][1]->Integral()/background[0]->mvaDiscr[1][1]->Integral();
+                        y_frCutBased[22][0]=background[4]->mvaDiscr[2][0]->Integral()/background[0]->mvaDiscr[2][0]->Integral();
+                        y_frCutBased[23][0]=background[4]->mvaDiscr[2][1]->Integral()/background[0]->mvaDiscr[2][1]->Integral();
+
+
 
 			
 
-		
-	for(int i=0;i<12;i++) { 
-                gr_pf_CutBased[i]=new TGraph(1,y_frCutBased[i], x_frCutBased[i]);
-                gr_pf_CutBased[i]->SetMarkerStyle(25+i);
-                gr_pf_CutBased[i]->SetMarkerColor(1+i);
-                gr_pf_CutBased[i]->SetMarkerSize(0.1);
-                gr_pf_CutBased[i]->SetMinimum(0.5);
-                gr_pf_CutBased[i]->GetXaxis()->SetLimits(0.00,1.005);
-                gr_pf_CutBased[i]->GetYaxis()->SetRangeUser(0.5,1.1);
-        }
-	int col[6];
-	col[0]=1;
-	col[1]=1;
-	col[2]=2;
+int col[24];
+        col[0]=1;
+        col[1]=2;
+        col[2]=1;
         col[3]=2;
-	col[4]=3;
-        col[5]=3;
+        col[4]=1;
+        col[5]=2;
+	col[6]=1;
+        col[7]=2;
+        col[8]=1;
+        col[9]=2;
+        col[10]=1;
+        col[11]=2;
+	col[12]=1;
+        col[13]=2;
+        col[14]=1;
+        col[15]=2;
+        col[16]=1;
+        col[17]=2;
+	col[18]=1;
+        col[19]=2;
+        col[20]=1;
+        col[21]=2;
+        col[22]=1;
+        col[23]=2;
+
+int mark[24];
+        mark[0]=21;
+        mark[1]=25;
+        mark[2]=21;
+        mark[3]=25;
+        mark[4]=21;
+        mark[5]=25;
+        mark[6]=22;
+        mark[7]=26;
+        mark[8]=22;
+        mark[9]=26;
+        mark[10]=22;
+        mark[11]=26;
+        mark[12]=23;
+        mark[13]=32;
+        mark[14]=23;
+        mark[15]=32;
+        mark[16]=23;
+        mark[17]=32;
+        mark[18]=34;
+        mark[19]=28;
+        mark[20]=34;
+        mark[21]=28;
+        mark[22]=34;
+        mark[23]=28;
+	
+int mark2[6];
+	mark2[0]=20;
+	mark2[1]=24;
+	mark2[2]=20;
+	mark2[3]=24;
+	mark2[4]=20;
+	mark2[5]=24;
+	
+
+	
+	for(int i=0;i<24;i++) { 
+                gr_pf_CutBased[i]=new TGraph(1,y_frCutBased[i], x_frCutBased[i]);
+                gr_pf_CutBased[i]->SetMarkerStyle(mark[i]);
+                gr_pf_CutBased[i]->SetMarkerColor(col[i]);
+                gr_pf_CutBased[i]->SetMarkerSize(1);
+                gr_pf_CutBased[i]->SetMinimum(0.5);
+                gr_pf_CutBased[i]->GetXaxis()->SetLimits(0.00,0.4);
+                gr_pf_CutBased[i]->GetYaxis()->SetRangeUser(0.005,1.02);
+        }
 	for(int i=0;i<6;i++) {
 		gr_pf_all[i]=new TGraph(Nbin2D,y_pf_all[i], x_pf_all[i]);
-		gr_pf_all[i]->SetMarkerStyle(25+i);
+		gr_pf_all[i]->SetMarkerStyle(mark2[i]);
 		gr_pf_all[i]->SetMarkerColor(col[i]);
-		gr_pf_all[i]->SetMarkerSize(0.5);
+		gr_pf_all[i]->SetMarkerSize(1);
 		gr_pf_all[i]->SetMinimum(0.5);
-		gr_pf_all[i]->GetXaxis()->SetLimits(0.00,1.005);
-        	gr_pf_all[i]->GetYaxis()->SetRangeUser(0.5,1.1);
+		gr_pf_all[i]->GetXaxis()->SetLimits(0.00,0.4);
+        	gr_pf_all[i]->GetYaxis()->SetRangeUser(0.0055,1.02);
+		gr_pf_all[i]->GetXaxis()->SetTitle("Background efficiency");
+		gr_pf_all[i]->GetYaxis()->SetTitle("Signal efficiency");
+		gr_pf_all[i]->GetXaxis()->SetTitleSize(0.04);
+                gr_pf_all[i]->GetYaxis()->SetTitleSize(0.04);
+		gr_pf_all[i]->GetYaxis()->SetTitleOffset(1.5);
 	}
-	TLegend *legend=new TLegend(0.25,0.8,0.55,0.94);
+	
+	TPaveText *text=new TPaveText(0.18,0.94,0.3,0.99,"NDC");
+        text->AddText("CMS simulation");
+        text->SetTextSize(0.035);
+        text->SetBorderSize(0);
+        text->SetFillColor(0);
+	
+	TPaveText *text_low=new TPaveText(0.6,0.55,0.8,0.6,"NDC");
+        text_low->AddText("P_{T}< 10 GeV");
+        text_low->SetTextSize(0.025);
+        text_low->SetBorderSize(0);
+        text_low->SetFillColor(0);
+
+	TPaveText *text_mid=new TPaveText(0.6,0.55,0.8,0.6,"NDC");
+        text_mid->AddText("10 GeV<P_{T}<20 GeV");
+        text_mid->SetTextSize(0.025);
+        text_mid->SetBorderSize(0);
+        text_mid->SetFillColor(0);
+
+	TPaveText *text_high=new TPaveText(0.6,0.55,0.8,0.6,"NDC");
+        text_high->AddText("P_{T}>20 GeV");
+        text_high->SetTextSize(0.025);
+        text_high->SetBorderSize(0);
+        text_high->SetFillColor(0);
+
+	
+	TLegend *legend=new TLegend(0.4,0.17,0.9,0.5);
         legend->SetBorderSize(1);
         legend->SetFillColor(0);
         legend->SetTextSize(0.025);
 	legend->Draw();
 
+	// low pt bin
         gr_pf_all[0]->Draw("ap");
 	gr_pf_all[1]->Draw("psame");
-	gr_pf_all[2]->Draw("psame");
-	gr_pf_all[3]->Draw("psame");
-	
-	gr_pf_all[4]->Draw("psame");
-        gr_pf_all[5]->Draw("psame");	
-	for(int i=0;i<12;i++) {
-		gr_pf_CutBased[i]->Draw("psame");
-	}
+	gr_pf_CutBased[0]->Draw("psame");
+	gr_pf_CutBased[1]->Draw("psame");
+	gr_pf_CutBased[6]->Draw("psame");
+	gr_pf_CutBased[7]->Draw("psame");
+	gr_pf_CutBased[12]->Draw("psame");
+	gr_pf_CutBased[13]->Draw("psame");
+	gr_pf_CutBased[18]->Draw("psame");
+	gr_pf_CutBased[19]->Draw("psame");
+        legend->Clear();
+	text->Draw();
 
-	legend->Clear();
-
-        legend->AddEntry(gr_pf_all[0],"10<Pt<15 EDS","p");
-	legend->AddEntry(gr_pf_all[1],"10<Pt<15 EDS || TDS","p");
-        legend->AddEntry(gr_pf_all[2],"15<Pt<20 EDS","p");
-        legend->AddEntry(gr_pf_all[3],"15<Pt<20 EDS || TDS","p");	
-        legend->AddEntry(gr_pf_all[4],"20<Pt EDS","p");
-        legend->AddEntry(gr_pf_all[5],"20<Pt EDS || TDS","p");
+        legend->AddEntry(gr_pf_all[0],      "MVA:   ecal-driven","p");
+        legend->AddEntry(gr_pf_all[1],      "MVA:   ecal-or tracker-driven","p");
+	legend->AddEntry(gr_pf_CutBased[0], "veto:  ecal-driven","p");
+        legend->AddEntry(gr_pf_CutBased[1], "veto:  ecal- or tracker-driven","p");
+        legend->AddEntry(gr_pf_CutBased[6], "loose: ecal-driven","p");
+        legend->AddEntry(gr_pf_CutBased[7], "loose: ecal- or tracker-driven","p");
+        legend->AddEntry(gr_pf_CutBased[12],"med:   ecal-driven","p");
+        legend->AddEntry(gr_pf_CutBased[13],"med:   ecal- or tracker-driven","p");
+        legend->AddEntry(gr_pf_CutBased[18],"tight: ecal-driven","p");
+        legend->AddEntry(gr_pf_CutBased[19],"tight: ecal- or tracker-driven","p");
 	legend->Draw();
-	gPad->SetGridx(1);
-	gPad->SetGridy(1);	
-        can->Print(ProcessName+"effvseff.pdf");
+	text->Draw();
+//        gPad->SetGridx(1);
+//        gPad->SetGridy(1);	
+	text_low->Draw();
+	can->Print(ProcessName+"effvseff_lowPt.pdf");
+	// mid pt bin
+	gr_pf_all[2]->Draw("ap");
+	gr_pf_all[3]->Draw("psame");
+	gr_pf_CutBased[2]->Draw("psame");
+        gr_pf_CutBased[3]->Draw("psame");
+        gr_pf_CutBased[8]->Draw("psame");
+        gr_pf_CutBased[9]->Draw("psame");
+        gr_pf_CutBased[14]->Draw("psame");
+        gr_pf_CutBased[15]->Draw("psame");
+        gr_pf_CutBased[20]->Draw("psame");
+        gr_pf_CutBased[21]->Draw("psame");
+	
+	legend->Draw();
+	text->Draw();
+    //    gPad->SetGridx(1);
+   //     gPad->SetGridy(1);
+	text_mid->Draw();
+	can->Print(ProcessName+"effvseff_midPt.pdf");
+
+	// high pt bin
+	gr_pf_all[4]->Draw("ap");
+        gr_pf_all[5]->Draw("psame");	
+
+	gr_pf_CutBased[4]->Draw("psame");
+        gr_pf_CutBased[5]->Draw("psame");
+        gr_pf_CutBased[10]->Draw("psame");
+        gr_pf_CutBased[11]->Draw("psame");
+        gr_pf_CutBased[16]->Draw("psame");
+        gr_pf_CutBased[17]->Draw("psame");
+        gr_pf_CutBased[22]->Draw("psame");
+        gr_pf_CutBased[23]->Draw("psame");
+	legend->Draw();
+ //       gPad->SetGridx(1);
+ //       gPad->SetGridy(1);
+	text->Draw();
+	text_high->Draw();
+        can->Print(ProcessName+"effvseff_highPt.pdf");
 }
 
 
@@ -577,13 +746,13 @@ void SLPlotter::TheFill(HistoMaker *obj,EventElecComm *Evt){
                 obj->Eta[4]->Fill(Evt->etaGen);
 		obj->mva_e_pi->Fill(Evt->mva_e_pi);
 	}
-	if(Evt->isMatchedWithAPFElec==1 && Evt->themva>-0.1){
+	if(Evt->isMatchedWithAPFElec==1 && Evt->mva>-0.1){
                 obj->Pt[5]->Fill(Evt->ptGen);
                 obj->Eta[5]->Fill(Evt->etaGen);
-                obj->themva->Fill(Evt->themva);
+                obj->themva->Fill(Evt->mva);
         }		
 	
-	int kincond=-1,seedcond=-1;
+	int kincond=-1;
 	
 	if(Evt->ecalseed> -10 || Evt->trkseed>-10){
 		if(Evt->ptGen<10)kincond=0;
@@ -591,7 +760,6 @@ void SLPlotter::TheFill(HistoMaker *obj,EventElecComm *Evt){
 		if(Evt->ptGen>20)kincond=2;
 		if(Evt->ecalseed==1)obj->mvaDiscr[kincond][0]->Fill(Evt->mva);
 		if(Evt->ecalseed==1 || Evt->trkseed)obj->mvaDiscr[kincond][1]->Fill(Evt->mva);
-		cout<<Evt->ecalseed<<" "<<Evt->trkseed<<" Filling obj->mvaDiscr["<<kincond<<"]["<<seedcond<<"] with "<<Evt->mva<<endl;
 	}
 }
 
@@ -618,7 +786,7 @@ void SLPlotter::FillHistos(){
 				TheFill(electron_highPU,Evt);
 			}
                 }
-		if(basicselection && isfromV && abs(Evt->pdgId)==11 && Evt->themva>-10){
+		if(basicselection && isfromV && abs(Evt->pdgId)==11 && Evt->mva>-10){
 			TheFill(electron_isolated[0],Evt);
 			if(Evt->id_veto==1)TheFill(electron_isolated[1],Evt);
 			if(Evt->id_loose==1)TheFill(electron_isolated[2],Evt);
@@ -649,7 +817,7 @@ void SLPlotter::FillHistos(){
                                 TheFill(kaon_highPU,Evt);
                         }
                 }
-		if(basicselection && abs(Evt->pdgId)!=11 && Evt->themva>-10){
+		if(basicselection && abs(Evt->pdgId)!=11 && Evt->mva>-10){
 			TheFill(background[0],Evt);
                         if(Evt->id_veto==1)TheFill(background[1],Evt);
                         if(Evt->id_loose==1)TheFill(background[2],Evt);

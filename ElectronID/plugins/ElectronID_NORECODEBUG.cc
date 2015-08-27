@@ -298,7 +298,6 @@ ElectronID_NORECODEBUG::analyze(const edm::Event& iEvent, const edm::EventSetup&
   iEvent.getByToken(eleLooseIdMapToken_ ,loose_id_decisions);
   iEvent.getByToken(eleMediumIdMapToken_,medium_id_decisions);
   iEvent.getByToken(eleTightIdMapToken_,tight_id_decisions);
-  edm::Handle<edm::ValueMap<float> > mvaValues;
   iEvent.getByToken(mvaValuesMapToken_,mvaValues);
 
         if(!PrimaryVetices.isValid() || PrimaryVetices->empty()) return;
@@ -316,11 +315,13 @@ ElectronID_NORECODEBUG::analyze(const edm::Event& iEvent, const edm::EventSetup&
 void ElectronID_NORECODEBUG::PFElecFiller(){
 	for (int j = 0 ; j < (int)gpc.size(); ++j)
         {
+		cout<<"ok"<<endl;
 		rtgf->initGenToRecoFillerObject();
                 bool isFinal=gpc[j].status()==1;
                 bool isElecOrPionOrKaon=fabs(gpc[j].pdgId())==11 || fabs(gpc[j].pdgId())==211 || fabs(gpc[j].pdgId())==321;
                 bool isKineOk=gpc[j].pt()>1.5 && fabs(gpc[j].eta())<2.4;
                 if(isFinal && isElecOrPionOrKaon && isKineOk){
+			cout<<"---->okok"<<endl;
 			rtgf->pdgId=fabs(gpc[j].pdgId());
                         rtgf->origin=GetOrigin(gpc[j]);
                         rtgf->ptGen=gpc[j].pt();
@@ -328,6 +329,7 @@ void ElectronID_NORECODEBUG::PFElecFiller(){
                         rtgf->etaGen=gpc[j].eta();
 			for (reco::PFCandidateCollection::const_iterator  pfe=PFCandidates->begin(); pfe!=PFCandidates->end(); ++pfe){
 				if(pfe->particleId()==2 && deltaR(gpc[j].eta(), gpc[j].phi(), pfe->eta(),pfe->phi())<0.01){
+					cout<<"--------> okokok"<<endl;
 					GsfElectronRef elec=pfe->gsfElectronRef();
 					rtgf->ecalseed=elec->core()->ecalDrivenSeed();
 					rtgf->trkseed=elec->core()->trackerDrivenSeed();
@@ -337,12 +339,16 @@ void ElectronID_NORECODEBUG::PFElecFiller(){
 						float dr=deltaR(pfe_surr->eta(), pfe_surr->phi(), pfe->eta(),pfe->phi());
 						if(dr!=0 && dr<0.3)pt_surr=+pfe_surr->pt();
 					}
+					cout<<"--------> okokok a"<<endl;
 					rtgf->pf_isol=pt_surr/elec->pt();
 					rtgf->id_veto= (*veto_id_decisions)[elec];
+					cout<<"--------> okokok b"<<endl;
     					rtgf->id_loose  = (*loose_id_decisions)[elec];
     					rtgf->id_medium  = (*medium_id_decisions)[elec];
 					rtgf->id_tight = (*tight_id_decisions)[elec];
+					cout<<"--------> okokok c"<<endl;
 					rtgf->mva = (*mvaValues)[elec];
+					cout<<"--------> okokok d"<<endl;
 				}
 			}
 			for (reco::GsfElectronCollection::const_iterator  gsf=GEDGsfElecs->begin(); gsf!=GEDGsfElecs->end(); ++gsf){

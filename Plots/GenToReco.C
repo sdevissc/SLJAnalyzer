@@ -41,6 +41,20 @@ void SetStyle(Type *a,int color, int style, int fillstyle, const TString& xtitle
         }
 }
 
+template <class Type>
+void SetStyle(Type *a,int color, int style, const TString& xtitle,const TString& ytitle, float min, float max){
+        a->SetLineColor(color);
+        a->SetMarkerColor(color);
+        a->SetMarkerStyle(style);
+        a->SetMarkerSize(0.8);
+        a->GetXaxis()->SetTitle(xtitle);
+        a->GetYaxis()->SetTitle(ytitle);
+        if(min!=-777.0 && max!=-777.0 ){
+                a->SetMinimum(min);
+                a->SetMaximum(max);
+        }
+}
+
 
 class HistoMaker
 {
@@ -48,12 +62,13 @@ class HistoMaker
 	HistoMaker(const TString& ,const TString &);
 	~HistoMaker();
 	void Combine();
-	
+	void EffSelDiscr();
 	TH1F* TemplatePt;
 	TH1F* TemplateEta;
-	TH1F *Pt[8],*EffPt[8],*EffEta[8],*Eta[8];
+	TH1F *Pt[20],*EffPt[20],*EffEta[20],*Eta[20];
 
-	TH1F* mvaDiscr[3][3];
+	TH1F* mvaDiscr[3][4];
+	float Eff[3][2][2][Nbin2D];
 
 	TH1F *mva_e_pi,*themva;	
 
@@ -76,13 +91,13 @@ HistoMaker::HistoMaker(const TString& inputname,const TString & tag)
 	TemplatePt=new TH1F(inputname+tag+"Pt[0]","",nbinpt,ptx);
 	TemplateEta=new TH1F(inputname+tag+"Eta[0]","",nbineta,etax);
 	themva=new TH1F(inputname+tag+"mva","",Nbin2D,-1.1,1.1);	
-	for(int i=0;i<8;i++){
+	for(int i=0;i<20;i++){
 		Pt[i]=(TH1F*)TemplatePt->Clone(Form("Pt_%d",i));
 		Eta[i]=(TH1F*)TemplateEta->Clone(Form("Eta_%d",i));
 		EffPt[i]=(TH1F*)TemplatePt->Clone(Form("EffPt_%d",i));
                 EffEta[i]=(TH1F*)TemplateEta->Clone(Form("EffEta_%d",i));
 	}
-	for(int i=0;i<3;i++)for(int j=0;j<3;j++){
+	for(int i=0;i<3;i++)for(int j=0;j<4;j++){
                 mvaDiscr[i][j]=(TH1F*)themva->Clone(Form("mva_%d",i));
         }
 
@@ -94,12 +109,18 @@ HistoMaker::~HistoMaker()                 // destructor, just an example
 
 
 
+void HistoMaker::EffSelDiscr(){
+	for(int k=0;k<Nbin2D;k++)for(int kin=0;kin<3;kin++)for(int seed=0;seed<2;seed++)for(int type=0;type<2;type++){
+		int denom=(type==0)?2:3;
+		Eff[kin][seed][type][k]         = mvaDiscr[kin][seed]->Integral(k+1,Nbin2D)/mvaDiscr[kin][denom]->Integral(0,Nbin2D+1);
+	}
 
+}
 
 void HistoMaker::Combine(){
 	TH1::SetDefaultSumw2(kTRUE);
 
-	for(int i=1;i<8;i++){
+	for(int i=1;i<20;i++){
 		EffPt[i]->Add(Pt[i]);
 		EffPt[i]->Divide(Pt[0]);
 		EffEta[i]->Add(Eta[i]);
@@ -189,7 +210,8 @@ void SLPlotter::initialize(){
         string processline;
         Processes >>   ProcName;
         Evt = new EventElecComm(ProcName);
-        nentries =/* 1500000;*/Evt->fChain->GetEntriesFast();
+//        nentries =Evt->fChain->GetEntriesFast();
+	nentries =1500000;
 }
 
 
@@ -419,6 +441,107 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
 	can->Print(ProcessName+"_Pion_RecoEff_vs_Eta.pdf");
 
 	legend->Clear();
+//--------------------------------------------GSF id Pt Eff
+	 legend->SetTextSize(0.020);
+        legend->AddEntry(electron_isolated[0]->EffPt[8],"e: ecal-driven");
+        legend->AddEntry(background[0]->EffPt[8],"#pi: ecal driven");
+	legend->AddEntry(electron_isolated[0]->EffPt[9],"e: ecal-driven or tracker-driven");
+        legend->AddEntry(background[0]->EffPt[9],"#pi: ecal driven or tracker driven");
+
+
+        gPad->SetGridx();
+        gPad->SetGridy();
+        gPad->SetLogx(1);
+	gPad->SetLogy(1);
+        SetStyle(electron_isolated[0]->EffPt[8],kBlack,20,"p_{T} of the generated particle","Efficiency",0.002,log==0?1.2:1.2);
+        SetStyle(background[0]->EffPt[8],1,21,"p_{T} of the generated particle","Efficiency",0.002,log==0?1.2:1.2);
+	SetStyle(electron_isolated[0]->EffPt[9],kRed,24,"p_{T} of the generated particle","Efficiency",0.002,log==0?1.2:1.2);
+        SetStyle(background[0]->EffPt[9],2,25,"p_{T} of the generated particle","Efficiency",0.002,log==0?1.2:1.20);
+	SetStyle(electron_isolated[0]->EffPt[19],kRed,24,"p_{T} of the generated particle","Efficiency",0.002,log==0?1.2:1.2);
+        SetStyle(background[0]->EffPt[19],2,25,"p_{T} of the generated particle","Efficiency",0.002,log==0?1.2:1.20);
+
+        electron_isolated[0]->EffPt[8]->Draw("p");
+        background[0]->EffPt[8]->Draw("psame");
+	electron_isolated[0]->EffPt[9]->Draw("psame");
+        background[0]->EffPt[9]->Draw("psame");
+
+
+        legend->Draw();
+        text->Draw();
+        can->Print(Form(ProcessName+"_Electron_and_background_EDS_TDS_SeedEff_vs_Pt_log%d_%s.pdf",log,ProcessFile.c_str()));
+
+	legend->Clear();
+
+
+	TH1F *div[5];
+	div[0]=(TH1F*)electron_isolated[0]->EffPt[9]->Clone();
+	div[0]->Add(electron_isolated[0]->EffPt[8],-1);
+	div[0]->Scale(100);
+	
+	div[1]=(TH1F*)electron_isolated[0]->EffPt[19]->Clone();
+        div[1]->Add(electron_isolated[0]->EffPt[18],-1);
+        div[1]->Scale(100);
+
+	div[4]=(TH1F*)electron_isolated[0]->EffPt[17]->Clone();
+        div[4]->Add(electron_isolated[0]->EffPt[16],-1);
+        div[4]->Scale(100);
+		
+	gPad->SetLogy(0);
+//	div[0]->Draw("p");
+	div[1]->Draw("p");
+	div[4]->Draw("psame");
+
+	TLegend *legend2=new TLegend(0.32,0.8,0.65,0.92);
+        legend2->SetBorderSize(0);
+        legend2->SetFillColor(0);
+        legend2->SetTextSize(0.035);
+
+	 legend2->SetTextSize(0.020);
+   //     legend2->AddEntry(div[0],"mva>0");
+	legend2->AddEntry(div[1],"H#rightarrow(ZZ)#rightarrow 4e WP.");
+	legend2->AddEntry(div[4],"mva>0.8 WP");
+
+	legend2->Draw();
+	
+	TPaveText *text2=new TPaveText(0.18,0.94,0.3,0.99,"NDC");
+        text2->AddText("CMS simulation");
+        text2->SetTextSize(0.035);
+        text2->SetBorderSize(0);
+        text2->SetFillColor(0);
+	text2->Draw();		
+	SetStyle(div[0],1,25,"p_{T} of the generated particle","Efficiency Gain (%)",0.002,log==0?30:30);
+	SetStyle(div[1],2,26,"p_{T} of the generated particle","Efficiency Gain (%)",0.002,log==0?30:30);
+	SetStyle(div[4],4,29,"p_{T} of the generated particle","Efficiency Gain (%)",0.002,log==0?30:30);
+	can->Print(Form(ProcessName+"_DIV_Electron_and_background_EDS_TDS_SeedEff_vs_Pt_log%d_%s.pdf",log,ProcessFile.c_str()));
+	gPad->SetLogy(1);
+//-----------------------------------------Gsf Id Eta Eff
+//	legend->Clear();
+	legend->SetTextSize(0.020);
+ //       legend->AddEntry(electron_isolated[0]->EffEta[8],"e: ecal-driven");
+ //       legend->AddEntry(background[0]->EffEta[8],"#pi: ecal driven");
+ //       legend->AddEntry(electron_isolated[0]->EffEta[9],"e: ecal-driven or tracker-driven");
+ //       legend->AddEntry(background[0]->EffEta[9],"#pi: ecal driven or tracker driven");
+        
+        
+        gPad->SetGridx();
+        gPad->SetGridy();
+        gPad->SetLogy(0);
+	gPad->SetLogx(0);
+        SetStyle(electron_isolated[0]->EffEta[8],kBlack,20,"#eta of the generated particle","Efficiency",0.002,log==0?1.2:2);
+        SetStyle(background[0]->EffEta[8],1,21,3006,"#eta of the generated particle","Efficiency",0.002,log==0?1.2:2);
+        SetStyle(electron_isolated[0]->EffEta[9],kRed,24,"#eta of the generated particle","Efficiency",0.002,log==0?1.2:2);
+        SetStyle(background[0]->EffEta[9],2,25,"#eta of the generated particle","Efficiency",0.002,log==0?1.2:2);
+
+        electron_isolated[0]->EffEta[8]->Draw("p");
+        background[0]->EffEta[8]->Draw("psame");
+        electron_isolated[0]->EffEta[9]->Draw("psame");
+        background[0]->EffEta[9]->Draw("psame");
+
+
+        legend->Draw();
+        text->Draw();
+        can->Print(Form(ProcessName+"_Electron_and_background_EDS_TDS_SeedEff_vs_Eta_log%d_%s.pdf",log,ProcessFile.c_str()));
+
 
 	delete legend;
 	delete can;
@@ -426,107 +549,15 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
 
 void SLPlotter::MakeEffvsEffPlot(TString &process){
 	setTDRStyle();
-	TCanvas *can = new TCanvas("h", "bla",400,600);
+	TCanvas *can = new TCanvas("h", "bla",600,600);
         can->SetLeftMargin(0.17);
         can->SetTopMargin(0.07);
-        can->SetRightMargin(0.05);
+        can->SetRightMargin(0.07);
         can->SetBottomMargin(0.15);
 	ProcessName=process;
-        float x_pf_all[6][Nbin2D],y_pf_all[6][Nbin2D];
-	 TGraph *gr_pf_all[6],*gr_pf_CutBased[24];
-	float x_frCutBased[24][1],y_frCutBased[24][1];
-        for(int k=0;k<Nbin2D;k++){
-			y_pf_all[0][k]=background[0]->mvaDiscr[0][0]->Integral(k+1,Nbin2D)/background[0]->mvaDiscr[0][0]->Integral();
-			y_pf_all[1][k]=background[0]->mvaDiscr[0][1]->Integral(k+1,Nbin2D)/background[0]->mvaDiscr[0][1]->Integral();
-			y_pf_all[2][k]=background[0]->mvaDiscr[1][0]->Integral(k+1,Nbin2D)/background[0]->mvaDiscr[1][0]->Integral();
-                        y_pf_all[3][k]=background[0]->mvaDiscr[1][1]->Integral(k+1,Nbin2D)/background[0]->mvaDiscr[1][1]->Integral();
-			y_pf_all[4][k]=background[0]->mvaDiscr[2][0]->Integral(k+1,Nbin2D)/background[0]->mvaDiscr[2][0]->Integral();
-                        y_pf_all[5][k]=background[0]->mvaDiscr[2][1]->Integral(k+1,Nbin2D)/background[0]->mvaDiscr[2][1]->Integral();
-        
-	                x_pf_all[0][k]=electron_isolated[0]->mvaDiscr[0][0]->Integral(k+1,Nbin2D)/electron_isolated[0]->mvaDiscr[0][0]->Integral();
-			x_pf_all[1][k]=electron_isolated[0]->mvaDiscr[0][1]->Integral(k+1,Nbin2D)/electron_isolated[0]->mvaDiscr[0][1]->Integral();
-                        x_pf_all[2][k]=electron_isolated[0]->mvaDiscr[1][0]->Integral(k+1,Nbin2D)/electron_isolated[0]->mvaDiscr[1][0]->Integral();
-                        x_pf_all[3][k]=electron_isolated[0]->mvaDiscr[1][1]->Integral(k+1,Nbin2D)/electron_isolated[0]->mvaDiscr[1][1]->Integral();
-                        x_pf_all[4][k]=electron_isolated[0]->mvaDiscr[2][0]->Integral(k+1,Nbin2D)/electron_isolated[0]->mvaDiscr[2][0]->Integral();
-                        x_pf_all[5][k]=electron_isolated[0]->mvaDiscr[2][1]->Integral(k+1,Nbin2D)/electron_isolated[0]->mvaDiscr[2][1]->Integral();
+	 TGraph *gr_pf_all[3][2][2][2][2];
 
-			cout<<"Signal"<<endl;
-                        cout<<"**********"<<endl;
-                        cout<<"content: "<<electron_isolated[0]->mvaDiscr[0][0]->Integral(k+1,Nbin2D)<<" "<<electron_isolated[0]->mvaDiscr[0][0]->Integral()<<endl;
-                        cout<<"content: "<<electron_isolated[0]->mvaDiscr[0][1]->Integral(k+1,Nbin2D)<<" "<<electron_isolated[0]->mvaDiscr[0][1]->Integral()<<endl;
-                        cout<<"content: "<<electron_isolated[0]->mvaDiscr[1][0]->Integral(k+1,Nbin2D)<<" "<<electron_isolated[0]->mvaDiscr[1][0]->Integral()<<endl;
-                        cout<<"content: "<<electron_isolated[0]->mvaDiscr[1][1]->Integral(k+1,Nbin2D)<<" "<<electron_isolated[0]->mvaDiscr[1][1]->Integral()<<endl;
-                        cout<<"content: "<<electron_isolated[0]->mvaDiscr[2][0]->Integral(k+1,Nbin2D)<<" "<<electron_isolated[0]->mvaDiscr[2][0]->Integral()<<endl;
-                        cout<<"content: "<<electron_isolated[0]->mvaDiscr[2][1]->Integral(k+1,Nbin2D)<<" "<<electron_isolated[0]->mvaDiscr[2][1]->Integral()<<endl;
-			cout<<"Background"<<endl;	
-			cout<<"**********"<<endl;
-			cout<<"content: "<<background[0]->mvaDiscr[0][0]->Integral(k+1,Nbin2D)<<" "<<background[0]->mvaDiscr[0][0]->Integral()<<endl;
-			cout<<"content: "<<background[0]->mvaDiscr[0][1]->Integral(k+1,Nbin2D)<<" "<<background[0]->mvaDiscr[0][1]->Integral()<<endl;
-			cout<<"content: "<<background[0]->mvaDiscr[1][0]->Integral(k+1,Nbin2D)<<" "<<background[0]->mvaDiscr[1][0]->Integral()<<endl;
-			cout<<"content: "<<background[0]->mvaDiscr[1][1]->Integral(k+1,Nbin2D)<<" "<<background[0]->mvaDiscr[1][1]->Integral()<<endl;
-			cout<<"content: "<<background[0]->mvaDiscr[2][0]->Integral(k+1,Nbin2D)<<" "<<background[0]->mvaDiscr[2][0]->Integral()<<endl;
-			cout<<"content: "<<background[0]->mvaDiscr[2][1]->Integral(k+1,Nbin2D)<<" "<<background[0]->mvaDiscr[2][1]->Integral()<<endl;
-
-		
-	cout<<"Signal     X: "<<x_pf_all[0][k]<<" "<<x_pf_all[1][k]<<" "<<x_pf_all[2][k]<<" "<<x_pf_all[3][k]<<" "<<x_pf_all[4][k]<<" "<<x_pf_all[5][k]<<endl;
-	cout<<"Background Y: "<<y_pf_all[0][k]<<" "<<y_pf_all[1][k]<<" "<<y_pf_all[2][k]<<" "<<y_pf_all[3][k]<<" "<<y_pf_all[4][k]<<" "<<y_pf_all[5][k]<<endl;
-	}
-			x_frCutBased[0][0]=electron_isolated[1]->mvaDiscr[0][0]->Integral()/electron_isolated[0]->mvaDiscr[0][0]->Integral();
-			x_frCutBased[1][0]=electron_isolated[1]->mvaDiscr[0][1]->Integral()/electron_isolated[0]->mvaDiscr[0][1]->Integral();
-			x_frCutBased[2][0]=electron_isolated[1]->mvaDiscr[1][0]->Integral()/electron_isolated[0]->mvaDiscr[1][0]->Integral();
-                        x_frCutBased[3][0]=electron_isolated[1]->mvaDiscr[1][1]->Integral()/electron_isolated[0]->mvaDiscr[1][1]->Integral();
-			x_frCutBased[4][0]=electron_isolated[1]->mvaDiscr[2][0]->Integral()/electron_isolated[0]->mvaDiscr[2][0]->Integral();
-                        x_frCutBased[5][0]=electron_isolated[1]->mvaDiscr[2][1]->Integral()/electron_isolated[0]->mvaDiscr[2][1]->Integral();
-			x_frCutBased[6][0]=electron_isolated[2]->mvaDiscr[0][0]->Integral()/electron_isolated[0]->mvaDiscr[0][0]->Integral();
-                        x_frCutBased[7][0]=electron_isolated[2]->mvaDiscr[0][1]->Integral()/electron_isolated[0]->mvaDiscr[0][1]->Integral();
-                        x_frCutBased[8][0]=electron_isolated[2]->mvaDiscr[1][0]->Integral()/electron_isolated[0]->mvaDiscr[1][0]->Integral();
-                        x_frCutBased[9][0]=electron_isolated[2]->mvaDiscr[1][1]->Integral()/electron_isolated[0]->mvaDiscr[1][1]->Integral();
-			x_frCutBased[10][0]=electron_isolated[2]->mvaDiscr[2][0]->Integral()/electron_isolated[0]->mvaDiscr[2][0]->Integral();
-                        x_frCutBased[11][0]=electron_isolated[2]->mvaDiscr[2][1]->Integral()/electron_isolated[0]->mvaDiscr[2][1]->Integral();
-                        x_frCutBased[12][0]=electron_isolated[3]->mvaDiscr[0][0]->Integral()/electron_isolated[0]->mvaDiscr[0][0]->Integral();
-                        x_frCutBased[13][0]=electron_isolated[3]->mvaDiscr[0][1]->Integral()/electron_isolated[0]->mvaDiscr[0][1]->Integral();
-                        x_frCutBased[14][0]=electron_isolated[3]->mvaDiscr[1][0]->Integral()/electron_isolated[0]->mvaDiscr[1][0]->Integral();
-                        x_frCutBased[15][0]=electron_isolated[3]->mvaDiscr[1][1]->Integral()/electron_isolated[0]->mvaDiscr[1][1]->Integral();
-                        x_frCutBased[16][0]=electron_isolated[3]->mvaDiscr[2][0]->Integral()/electron_isolated[0]->mvaDiscr[2][0]->Integral();
-                        x_frCutBased[17][0]=electron_isolated[3]->mvaDiscr[2][1]->Integral()/electron_isolated[0]->mvaDiscr[2][1]->Integral();
-                        x_frCutBased[18][0]=electron_isolated[4]->mvaDiscr[0][0]->Integral()/electron_isolated[0]->mvaDiscr[0][0]->Integral();
-                        x_frCutBased[19][0]=electron_isolated[4]->mvaDiscr[0][1]->Integral()/electron_isolated[0]->mvaDiscr[0][1]->Integral();
-                        x_frCutBased[20][0]=electron_isolated[4]->mvaDiscr[1][0]->Integral()/electron_isolated[0]->mvaDiscr[1][0]->Integral();
-                        x_frCutBased[21][0]=electron_isolated[4]->mvaDiscr[1][1]->Integral()/electron_isolated[0]->mvaDiscr[1][1]->Integral();
-                        x_frCutBased[22][0]=electron_isolated[4]->mvaDiscr[2][0]->Integral()/electron_isolated[0]->mvaDiscr[2][0]->Integral();
-                        x_frCutBased[23][0]=electron_isolated[4]->mvaDiscr[2][1]->Integral()/electron_isolated[0]->mvaDiscr[2][1]->Integral();
-
-
-			y_frCutBased[0][0]=background[1]->mvaDiscr[0][0]->Integral()/background[0]->mvaDiscr[0][0]->Integral();
-                        y_frCutBased[1][0]=background[1]->mvaDiscr[0][1]->Integral()/background[0]->mvaDiscr[0][1]->Integral();
-                        y_frCutBased[2][0]=background[1]->mvaDiscr[1][0]->Integral()/background[0]->mvaDiscr[1][0]->Integral();
-                        y_frCutBased[3][0]=background[1]->mvaDiscr[1][1]->Integral()/background[0]->mvaDiscr[1][1]->Integral();
-                        y_frCutBased[4][0]=background[1]->mvaDiscr[2][0]->Integral()/background[0]->mvaDiscr[2][0]->Integral();
-                        y_frCutBased[5][0]=background[1]->mvaDiscr[2][1]->Integral()/background[0]->mvaDiscr[2][1]->Integral();
-                        y_frCutBased[6][0]=background[2]->mvaDiscr[0][0]->Integral()/background[0]->mvaDiscr[0][0]->Integral();
-                        y_frCutBased[7][0]=background[2]->mvaDiscr[0][1]->Integral()/background[0]->mvaDiscr[0][1]->Integral();
-                        y_frCutBased[8][0]=background[2]->mvaDiscr[1][0]->Integral()/background[0]->mvaDiscr[1][0]->Integral();
-                        y_frCutBased[9][0]=background[2]->mvaDiscr[1][1]->Integral()/background[0]->mvaDiscr[1][1]->Integral();
-                        y_frCutBased[10][0]=background[2]->mvaDiscr[2][0]->Integral()/background[0]->mvaDiscr[2][0]->Integral();
-                        y_frCutBased[11][0]=background[2]->mvaDiscr[2][1]->Integral()/background[0]->mvaDiscr[2][1]->Integral();	
-                        y_frCutBased[12][0]=background[3]->mvaDiscr[0][0]->Integral()/background[0]->mvaDiscr[0][0]->Integral();
-                        y_frCutBased[13][0]=background[3]->mvaDiscr[0][1]->Integral()/background[0]->mvaDiscr[0][1]->Integral();
-                        y_frCutBased[14][0]=background[3]->mvaDiscr[1][0]->Integral()/background[0]->mvaDiscr[1][0]->Integral();
-                        y_frCutBased[15][0]=background[3]->mvaDiscr[1][1]->Integral()/background[0]->mvaDiscr[1][1]->Integral();
-                        y_frCutBased[16][0]=background[3]->mvaDiscr[2][0]->Integral()/background[0]->mvaDiscr[2][0]->Integral();
-                        y_frCutBased[17][0]=background[3]->mvaDiscr[2][1]->Integral()/background[0]->mvaDiscr[2][1]->Integral();
-                        y_frCutBased[18][0]=background[4]->mvaDiscr[0][0]->Integral()/background[0]->mvaDiscr[0][0]->Integral();
-                        y_frCutBased[19][0]=background[4]->mvaDiscr[0][1]->Integral()/background[0]->mvaDiscr[0][1]->Integral();
-                        y_frCutBased[20][0]=background[4]->mvaDiscr[1][0]->Integral()/background[0]->mvaDiscr[1][0]->Integral();
-                        y_frCutBased[21][0]=background[4]->mvaDiscr[1][1]->Integral()/background[0]->mvaDiscr[1][1]->Integral();
-                        y_frCutBased[22][0]=background[4]->mvaDiscr[2][0]->Integral()/background[0]->mvaDiscr[2][0]->Integral();
-                        y_frCutBased[23][0]=background[4]->mvaDiscr[2][1]->Integral()/background[0]->mvaDiscr[2][1]->Integral();
-
-
-
-			
-
-int col[24];
+	int col[24];
         col[0]=1;
         col[1]=2;
         col[2]=1;
@@ -578,142 +609,131 @@ int mark[24];
         mark[22]=34;
         mark[23]=28;
 	
-int mark2[6];
+int mark2[12];
 	mark2[0]=20;
 	mark2[1]=24;
 	mark2[2]=20;
 	mark2[3]=24;
 	mark2[4]=20;
 	mark2[5]=24;
-	
-
-	
-	for(int i=0;i<24;i++) { 
-                gr_pf_CutBased[i]=new TGraph(1,y_frCutBased[i], x_frCutBased[i]);
-                gr_pf_CutBased[i]->SetMarkerStyle(mark[i]);
-                gr_pf_CutBased[i]->SetMarkerColor(col[i]);
-                gr_pf_CutBased[i]->SetMarkerSize(1);
-                gr_pf_CutBased[i]->SetMinimum(0.5);
-                gr_pf_CutBased[i]->GetXaxis()->SetLimits(0.00,0.4);
-                gr_pf_CutBased[i]->GetYaxis()->SetRangeUser(0.005,1.02);
-        }
-	for(int i=0;i<6;i++) {
-		gr_pf_all[i]=new TGraph(Nbin2D,y_pf_all[i], x_pf_all[i]);
-		gr_pf_all[i]->SetMarkerStyle(mark2[i]);
-		gr_pf_all[i]->SetMarkerColor(col[i]);
-		gr_pf_all[i]->SetMarkerSize(1);
-		gr_pf_all[i]->SetMinimum(0.5);
-		gr_pf_all[i]->GetXaxis()->SetLimits(0.00,0.4);
-        	gr_pf_all[i]->GetYaxis()->SetRangeUser(0.0055,1.02);
-		gr_pf_all[i]->GetXaxis()->SetTitle("Background efficiency");
-		gr_pf_all[i]->GetYaxis()->SetTitle("Signal efficiency");
-		gr_pf_all[i]->GetXaxis()->SetTitleSize(0.04);
-                gr_pf_all[i]->GetYaxis()->SetTitleSize(0.04);
-		gr_pf_all[i]->GetYaxis()->SetTitleOffset(1.5);
-	}
-	
+	mark2[6]=20;
+        mark2[7]=24;
+        mark2[8]=20;
+        mark2[9]=24;
+        mark2[10]=20;
+        mark2[11]=24;
 	TPaveText *text=new TPaveText(0.18,0.94,0.3,0.99,"NDC");
         text->AddText("CMS simulation");
         text->SetTextSize(0.035);
         text->SetBorderSize(0);
         text->SetFillColor(0);
+	TPaveText *textkin[3];
+	for(int kin=0;kin<3;kin++){
+		textkin[kin]=new TPaveText(0.3,0.88,0.8,0.88,"NDC");
+		textkin[kin]->SetTextSize(0.03);
+                textkin[kin]->SetBorderSize(0);
+                textkin[kin]->SetFillColor(0);
+		textkin[kin]->SetTextAlign(10);
+	}
+        textkin[0]->AddText("P_{T}< 10 GeV");
+//	textkin[1]->AddText("10 <P_{T}< 20 GeV");
+	textkin[1]->AddText("P_{T}> 10 GeV");
+	textkin[2]->AddText("P_{T} > 20 GeV");
+	cout<<"Now filling the graphs"<<endl;
+	TPaveText *textDef[2][2];
 	
-	TPaveText *text_low=new TPaveText(0.6,0.55,0.8,0.6,"NDC");
-        text_low->AddText("P_{T}< 10 GeV");
-        text_low->SetTextSize(0.025);
-        text_low->SetBorderSize(0);
-        text_low->SetFillColor(0);
-
-	TPaveText *text_mid=new TPaveText(0.6,0.55,0.8,0.6,"NDC");
-        text_mid->AddText("10 GeV<P_{T}<20 GeV");
-        text_mid->SetTextSize(0.025);
-        text_mid->SetBorderSize(0);
-        text_mid->SetFillColor(0);
-
-	TPaveText *text_high=new TPaveText(0.6,0.55,0.8,0.6,"NDC");
-        text_high->AddText("P_{T}>20 GeV");
-        text_high->SetTextSize(0.025);
-        text_high->SetBorderSize(0);
-        text_high->SetFillColor(0);
-
+	for(int sig=0;sig<2;sig++)for(int bck=0;bck<2;bck++){
+		textDef[sig][bck]=new TPaveText(0.3,0.81,0.8,0.86,"NDC");
+		textDef[sig][bck]->SetTextSize(0.03);
+		textDef[sig][bck]->SetTextAlign(10);
+        	textDef[sig][bck]->SetBorderSize(0);
+        	textDef[sig][bck]->SetFillColor(0);
+	}	
+	textDef[0][0]->AddText("Signal:     electrons from Z decay");
+	textDef[0][0]->AddText("Background: any meson/baryon");
+	textDef[1][0]->AddText("Signal:     electrons from B hadron decay");
+        textDef[1][0]->AddText("Background: any meson/baryon");
+	textDef[0][1]->AddText("Signal:     electrons from Z decay");
+        textDef[0][1]->AddText("Background: pions");
+	textDef[1][1]->AddText("Signal:     electrons from B hadron decay");
+        textDef[1][1]->AddText("Background: pions");
+	for(int kin=0;kin<3;kin++){
+		textkin[kin]->SetTextSize(0.025);
+		textkin[kin]->SetBorderSize(0);
+		textkin[kin]->SetFillColor(0);
+		for(int seed=0;seed<2;seed++)for(int type=0;type<2;type++) {
+			gr_pf_all[kin][seed][type][0][0]=new TGraph(Nbin2D,background[0]->Eff[kin][seed][type],electron_isolated[0]->Eff[kin][seed][type]);
+			gr_pf_all[kin][seed][type][1][0]=new TGraph(Nbin2D,background[0]->Eff[kin][seed][type],electron->Eff[kin][seed][type]);
+			gr_pf_all[kin][seed][type][0][1]=new TGraph(Nbin2D,pion->Eff[kin][seed][type],electron_isolated[0]->Eff[kin][seed][type]);
+			gr_pf_all[kin][seed][type][1][1]=new TGraph(Nbin2D,pion->Eff[kin][seed][type],electron->Eff[kin][seed][type]);
+			for(int sig=0;sig<2;sig++)for(int bck=0;bck<2;bck++){
+				gr_pf_all[kin][seed][type][sig][bck]->SetMarkerStyle(20+4*seed);
+				gr_pf_all[kin][seed][type][sig][bck]->SetMarkerColor(1+seed);
+				gr_pf_all[kin][seed][type][sig][bck]->SetMinimum(0.5);
+				gr_pf_all[kin][seed][type][sig][bck]->GetXaxis()->SetLimits(0.00,(type==0)?0.4:(kin==0)?0.008:0.02);
+				gr_pf_all[kin][seed][type][sig][bck]->GetXaxis()->SetNdivisions(404,0);
+				gr_pf_all[kin][seed][type][sig][bck]->GetYaxis()->SetRangeUser(0.0055,1.4);
+				gr_pf_all[kin][seed][type][sig][bck]->GetXaxis()->SetTitle("Background efficiency");
+				gr_pf_all[kin][seed][type][sig][bck]->GetYaxis()->SetTitle("Signal efficiency");
+				gr_pf_all[kin][seed][type][sig][bck]->GetXaxis()->SetTitleSize(0.04);
+				gr_pf_all[kin][seed][type][sig][bck]->GetYaxis()->SetTitleSize(0.04);
+				gr_pf_all[kin][seed][type][sig][bck]->GetYaxis()->SetTitleOffset(1.5);
+				gr_pf_all[kin][seed][type][sig][bck]->GetXaxis()->SetTitleOffset(1.5);
+			}
+		}
+	}
+	cout<<"Now drawing"<<endl;
+	for(int kin=0;kin<3;kin++)for(int type=0;type<2;type++)for(int sig=0;sig<2;sig++)for(int bck=0;bck<2;bck++){
+		cout<<kin<<" "<<type<<" "<<sig<<" "<<bck<<endl;
+		gr_pf_all[kin][0][type][sig][bck]->Draw("ap");
+		gr_pf_all[kin][1][type][sig][bck]->Draw("psame");
+		TLegend *legend=new TLegend(0.2,0.7,0.92,0.80);
+        	legend->SetBorderSize(0);
+        	legend->SetFillColor(0);
+        	legend->SetTextSize(0.03);
+		TString efftype = (type==0)?"eff ID":"eff RECO+ID";
+		legend->AddEntry(gr_pf_all[kin][1][type][sig][bck],      "ecal-or tracker-driven "+efftype,"p");
+		legend->AddEntry(gr_pf_all[kin][0][type][sig][bck],      "ecal-driven "+efftype,"p");
+		legend->Draw();
+		textkin[kin]->Draw();
+		text->Draw();
+		textDef[sig][bck]->Draw();
+		can->Print(Form(ProcessName+"effvseff_%d_%d_%d_%d.pdf",kin,type,sig,bck));	
+		delete legend;
+	}
+	// Getting the ID and RECO+ID plots merged
+        for(int kin=0;kin<3;kin++)for(int type=0;type<2;type++)for(int sig=0;sig<2;sig++)for(int bck=0;bck<2;bck++){
+                cout<<kin<<" "<<type<<" "<<sig<<" "<<bck<<endl;
+                gr_pf_all[kin][0][0][sig][bck]->Draw("ap");
+                gr_pf_all[kin][1][0][sig][bck]->Draw("psame");
+		gr_pf_all[kin][0][1][sig][bck]->Draw("psame");
+                gr_pf_all[kin][1][1][sig][bck]->Draw("psame");
+                TLegend *legend=new TLegend(0.2,0.7,0.92,0.8);
+                legend->SetBorderSize(1);
+                legend->SetFillColor(0);
+                legend->SetTextSize(0.03);
+                TString efftype = (type==0)?"eff ID":"eff RECO+ID";
+                legend->AddEntry(gr_pf_all[kin][0][0][sig][bck], "eff_{ID}: ecal-driven "+efftype,"p");
+                legend->AddEntry(gr_pf_all[kin][1][0][sig][bck], "eff_{ID}: ecal-or tracker-driven "+efftype,"p");
+		legend->AddEntry(gr_pf_all[kin][0][1][sig][bck], "eff_{RECO+ID}: ecal-driven "+efftype,"p");
+                legend->AddEntry(gr_pf_all[kin][1][1][sig][bck], "eff_{RECO+ID}: ecal-or tracker-driven "+efftype,"p");
+		gr_pf_all[kin][0][1][sig][bck]->SetMarkerStyle(21);
+		gr_pf_all[kin][1][1][sig][bck]->SetMarkerStyle(25);
+		
+                legend->Draw();
+                textkin[kin]->Draw();
+                text->Draw();
+                textDef[sig][bck]->Draw();
+                can->Print(Form(ProcessName+"merged_effvseff_%d_%d_%d.pdf",kin,sig,bck));
+                delete legend;
+        }
 	
-	TLegend *legend=new TLegend(0.4,0.17,0.9,0.5);
-        legend->SetBorderSize(1);
-        legend->SetFillColor(0);
-        legend->SetTextSize(0.025);
-	legend->Draw();
-
-	// low pt bin
-        gr_pf_all[0]->Draw("ap");
-	gr_pf_all[1]->Draw("psame");
-	gr_pf_CutBased[0]->Draw("psame");
-	gr_pf_CutBased[1]->Draw("psame");
-	gr_pf_CutBased[6]->Draw("psame");
-	gr_pf_CutBased[7]->Draw("psame");
-	gr_pf_CutBased[12]->Draw("psame");
-	gr_pf_CutBased[13]->Draw("psame");
-	gr_pf_CutBased[18]->Draw("psame");
-	gr_pf_CutBased[19]->Draw("psame");
-        legend->Clear();
-	text->Draw();
-
-        legend->AddEntry(gr_pf_all[0],      "MVA:   ecal-driven","p");
-        legend->AddEntry(gr_pf_all[1],      "MVA:   ecal-or tracker-driven","p");
-	legend->AddEntry(gr_pf_CutBased[0], "veto:  ecal-driven","p");
-        legend->AddEntry(gr_pf_CutBased[1], "veto:  ecal- or tracker-driven","p");
-        legend->AddEntry(gr_pf_CutBased[6], "loose: ecal-driven","p");
-        legend->AddEntry(gr_pf_CutBased[7], "loose: ecal- or tracker-driven","p");
-        legend->AddEntry(gr_pf_CutBased[12],"med:   ecal-driven","p");
-        legend->AddEntry(gr_pf_CutBased[13],"med:   ecal- or tracker-driven","p");
-        legend->AddEntry(gr_pf_CutBased[18],"tight: ecal-driven","p");
-        legend->AddEntry(gr_pf_CutBased[19],"tight: ecal- or tracker-driven","p");
-	legend->Draw();
-	text->Draw();
-//        gPad->SetGridx(1);
-//        gPad->SetGridy(1);	
-	text_low->Draw();
-	can->Print(ProcessName+"effvseff_lowPt.pdf");
-	// mid pt bin
-	gr_pf_all[2]->Draw("ap");
-	gr_pf_all[3]->Draw("psame");
-	gr_pf_CutBased[2]->Draw("psame");
-        gr_pf_CutBased[3]->Draw("psame");
-        gr_pf_CutBased[8]->Draw("psame");
-        gr_pf_CutBased[9]->Draw("psame");
-        gr_pf_CutBased[14]->Draw("psame");
-        gr_pf_CutBased[15]->Draw("psame");
-        gr_pf_CutBased[20]->Draw("psame");
-        gr_pf_CutBased[21]->Draw("psame");
-	
-	legend->Draw();
-	text->Draw();
-    //    gPad->SetGridx(1);
-   //     gPad->SetGridy(1);
-	text_mid->Draw();
-	can->Print(ProcessName+"effvseff_midPt.pdf");
-
-	// high pt bin
-	gr_pf_all[4]->Draw("ap");
-        gr_pf_all[5]->Draw("psame");	
-
-	gr_pf_CutBased[4]->Draw("psame");
-        gr_pf_CutBased[5]->Draw("psame");
-        gr_pf_CutBased[10]->Draw("psame");
-        gr_pf_CutBased[11]->Draw("psame");
-        gr_pf_CutBased[16]->Draw("psame");
-        gr_pf_CutBased[17]->Draw("psame");
-        gr_pf_CutBased[22]->Draw("psame");
-        gr_pf_CutBased[23]->Draw("psame");
-	legend->Draw();
- //       gPad->SetGridx(1);
- //       gPad->SetGridy(1);
-	text->Draw();
-	text_high->Draw();
-        can->Print(ProcessName+"effvseff_highPt.pdf");
 }
 
 
 void SLPlotter::TheFill(HistoMaker *obj,EventElecComm *Evt){
+
+// CAUTION: THIS SECTION IS NOT PROTECTED ANYMORE BY A MVA MINIMAL CONDITION!!!!
 
         int flagEta=fabs(Evt->etaGen)<1.4?0:1;
 	obj->ForIntegral->Fill(Evt->ptGen);
@@ -753,20 +773,110 @@ void SLPlotter::TheFill(HistoMaker *obj,EventElecComm *Evt){
         }		
 	
 	int kincond=-1;
-	
+	if(Evt->ptGen<10)kincond=0;
+//        if(Evt->ptGen>10 && Evt->ptGen<20)kincond=1;
+	if(Evt->ptGen>10)kincond=1;
+//        if(Evt->ptGen>20)kincond=2;
+	obj->mvaDiscr[kincond][3]->Fill(Evt->mva);	
 	if(Evt->ecalseed> -10 || Evt->trkseed>-10){
-		if(Evt->ptGen<10)kincond=0;
-		if(Evt->ptGen>10 && Evt->ptGen<20)kincond=1;
-		if(Evt->ptGen>20)kincond=2;
-		if(Evt->ecalseed==1)obj->mvaDiscr[kincond][0]->Fill(Evt->mva);
-		if(Evt->ecalseed==1 || Evt->trkseed)obj->mvaDiscr[kincond][1]->Fill(Evt->mva);
+		obj->mvaDiscr[kincond][2]->Fill(Evt->mva);
+		if(Evt->ecalseed==1){
+			obj->mvaDiscr[kincond][0]->Fill(Evt->mva);
+			if(Evt->mva>0.0){
+				obj->Pt[8]->Fill(Evt->ptGen);
+				obj->Eta[8]->Fill(Evt->etaGen);
+			}
+			if(Evt->mva>0.2){
+                                obj->Pt[10]->Fill(Evt->ptGen);
+                                obj->Eta[10]->Fill(Evt->etaGen);
+                        }
+			if(Evt->mva>0.4){
+                                obj->Pt[12]->Fill(Evt->ptGen);
+                                obj->Eta[12]->Fill(Evt->etaGen);
+                        }
+			if(Evt->mva>0.6){
+                                obj->Pt[14]->Fill(Evt->ptGen);
+                                obj->Eta[14]->Fill(Evt->etaGen);
+                        }
+			if(Evt->mva>0.8){
+                                obj->Pt[16]->Fill(Evt->ptGen);
+                                obj->Eta[16]->Fill(Evt->etaGen);
+                        }
+			if(Evt->ptGen<10){
+				float feta=fabs(Evt->etaGen);
+				float bdt=Evt->mva;
+				bool cond1=feta<0.8 && bdt>0.47;
+				bool cond2=feta>0.8 && feta<1.479 && bdt>0.004;
+				bool cond3=feta>1.479 && bdt>0.295;
+				if(cond1 || cond2 || cond3){
+					obj->Pt[18]->Fill(Evt->ptGen);
+                                	obj->Eta[18]->Fill(Evt->etaGen);
+                        	}	
+			}else{
+				float feta=fabs(Evt->etaGen);
+                                float bdt=Evt->mva;
+                                bool cond1=feta<0.8 && bdt>-0.34;
+                                bool cond2=feta>0.8 && feta<1.479 && bdt>-0.65;
+                                bool cond3=feta>1.479 && bdt>0.6;
+                                if(cond1 || cond2 || cond3){
+                                        obj->Pt[18]->Fill(Evt->ptGen);
+                                        obj->Eta[18]->Fill(Evt->etaGen);
+                                }
+			}
+		}
+		if(Evt->ecalseed==1 || Evt->trkseed==1){
+			obj->mvaDiscr[kincond][1]->Fill(Evt->mva);
+			if(Evt->mva>0.0){
+				obj->Pt[9]->Fill(Evt->ptGen);
+                        	obj->Eta[9]->Fill(Evt->etaGen);
+			}
+			if(Evt->mva>0.2){
+                                obj->Pt[11]->Fill(Evt->ptGen);
+                                obj->Eta[11]->Fill(Evt->etaGen);
+                        }
+			if(Evt->mva>0.4){
+                                obj->Pt[13]->Fill(Evt->ptGen);
+                                obj->Eta[13]->Fill(Evt->etaGen);
+                        }
+			if(Evt->mva>0.6){
+                                obj->Pt[15]->Fill(Evt->ptGen);
+                                obj->Eta[15]->Fill(Evt->etaGen);
+                        }
+			if(Evt->mva>0.8){
+                                obj->Pt[17]->Fill(Evt->ptGen);
+                                obj->Eta[17]->Fill(Evt->etaGen);
+                        }
+			if(Evt->ptGen<10){
+                                float feta=fabs(Evt->etaGen);
+                                float bdt=Evt->mva;
+                                bool cond1=feta<0.8 && bdt>0.47;
+                                bool cond2=feta>0.8 && feta<1.479 && bdt>0.004;
+                                bool cond3=feta>1.479 && bdt>0.295;
+                                if(cond1 || cond2 || cond3){
+                                        obj->Pt[19]->Fill(Evt->ptGen);
+                                        obj->Eta[19]->Fill(Evt->etaGen);
+                                }
+                        }else{
+                                float feta=fabs(Evt->etaGen);
+                                float bdt=Evt->mva;
+                                bool cond1=feta<0.8 && bdt>-0.34;
+                                bool cond2=feta>0.8 && feta<1.479 && bdt>-0.65;
+                                bool cond3=feta>1.479 && bdt>0.6;
+                                if(cond1 || cond2 || cond3){
+                                        obj->Pt[19]->Fill(Evt->ptGen);
+                                        obj->Eta[19]->Fill(Evt->etaGen);
+                                }
+                        }
+
+			
+		}
 	}
 }
 
 
 void SLPlotter::FillHistos(){
 	for(int ientry=0; ientry<nentries; ientry++) {
-		if(ientry % 20000==0)cout<<"Event number "<<ientry<<endl;
+		if(ientry % 100000==0)cout<<"Event number "<<ientry<<endl;
                 Evt->GetEntry(ientry);
 		bool basicselection= Evt->ptGen>2 && fabs(Evt->etaGen)<2.4 ;
         	bool isfromB=(Evt->origin==4 || Evt->origin==6);
@@ -786,7 +896,7 @@ void SLPlotter::FillHistos(){
 				TheFill(electron_highPU,Evt);
 			}
                 }
-		if(basicselection && isfromV && abs(Evt->pdgId)==11 && Evt->mva>-10){
+		if(basicselection && isfromV && abs(Evt->pdgId)==11){
 			TheFill(electron_isolated[0],Evt);
 			if(Evt->id_veto==1)TheFill(electron_isolated[1],Evt);
 			if(Evt->id_loose==1)TheFill(electron_isolated[2],Evt);
@@ -817,7 +927,7 @@ void SLPlotter::FillHistos(){
                                 TheFill(kaon_highPU,Evt);
                         }
                 }
-		if(basicselection && abs(Evt->pdgId)!=11 && Evt->mva>-10){
+		if(basicselection && abs(Evt->pdgId)!=11){
 			TheFill(background[0],Evt);
                         if(Evt->id_veto==1)TheFill(background[1],Evt);
                         if(Evt->id_loose==1)TheFill(background[2],Evt);
@@ -833,7 +943,11 @@ void SLPlotter::FillHistos(){
 	pion_lowPU->Combine();
 	pion_highPU->Combine();
 	kaon->Combine();
-
+	background[0]->Combine();
+	electron_isolated[0]->EffSelDiscr();
+	background[0]->EffSelDiscr();
+	electron->EffSelDiscr();
+	pion->EffSelDiscr();
 
 }
 

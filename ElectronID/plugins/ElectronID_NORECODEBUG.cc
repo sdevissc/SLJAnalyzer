@@ -210,7 +210,7 @@ class ElectronID_NORECODEBUG : public edm::EDAnalyzer {
       Handle<reco::VertexCollection> PrimaryVetices;
       Handle<GenParticleCollection> GPC;
       Handle<reco::PFCandidateCollection> PFCandidates;
-      Handle<reco::GsfElectronCollection> GEDGsfElecs;	
+ edm::Handle<edm::View<reco::GsfElectron> > GEDGsfElecs;//     Handle<reco::GsfElectronCollection> GEDGsfElecs;	
       Handle<reco::ConversionCollection> hConversions;
       edm::Handle<BeamSpot> beamSpot;
 
@@ -351,13 +351,16 @@ void ElectronID_NORECODEBUG::PFElecFiller(){
 					cout<<"--------> okokok d"<<endl;
 				}
 			}
-			for (reco::GsfElectronCollection::const_iterator  gsf=GEDGsfElecs->begin(); gsf!=GEDGsfElecs->end(); ++gsf){
-                                if(deltaR(gpc[j].eta(), gpc[j].phi(), gsf->eta(),gsf->phi())<0.01){
-                                        rtgf->mva_gsf=gsf->mva_e_pi();
-                                        rtgf->ecalseed_gsf=gsf->core()->ecalDrivenSeed();
-                                        rtgf->trkseed_gsf=gsf->core()->trackerDrivenSeed();
+			for (size_t i = 0; i < GEDGsfElecs->size(); ++i){
+//			for (reco::GsfElectronCollection::const_iterator  gsf=GEDGsfElecs->begin(); gsf!=GEDGsfElecs->end(); ++gsf){
+				const auto el = GEDGsfElecs->ptrAt(i);
+                                if(deltaR(gpc[j].eta(), gpc[j].phi(), el->eta(),el->phi())<0.01){
+                                        rtgf->mva_gsf=(*mvaValues)[el];
+                                        rtgf->ecalseed_gsf=el->core()->ecalDrivenSeed();
+                                        rtgf->trkseed_gsf=el->core()->trackerDrivenSeed();
                                 }
-                        }
+                       // }
+			}
 			rtgf->tree_efficiency->Fill();
 		}
 	}

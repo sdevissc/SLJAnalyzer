@@ -73,6 +73,18 @@ Int_t		pdgId;
     Int_t id_loose;
     Int_t id_medium;
     Int_t id_tight;
+Float_t pfIso;
+Float_t detIso;
+Float_t dr03TkSumPt;
+Float_t dr03EcalRecHitSumEt;
+Float_t dr03HcalTowerSumEt;
+Float_t sumChargedHadronPt;
+Float_t sumNeutralHadronEt;
+Float_t isoPhotons;
+Float_t isoChargedHadrons;
+Float_t isoNeutralHadrons;
+Int_t isPF;
+Float_t ManualIsoPF;
    // List of branches
 TBranch        *b_origin;   //!
    TBranch        *b_pdgId;   //!	
@@ -125,7 +137,18 @@ TBranch        *b_origin;   //!
    TBranch        *b_id_loose;
    TBranch        *b_id_medium;
    TBranch        *b_id_tight;
-
+   TBranch        *b_pfIso;
+   TBranch        *b_detIso;
+   TBranch        *b_dr03TkSumPt;
+   TBranch        *b_dr03EcalRecHitSumEt;
+   TBranch        *b_dr03HcalTowerSumEt;
+   TBranch        *b_sumChargedHadronPt;
+   TBranch        *b_sumNeutralHadronEt;
+   TBranch        *b_isoPhotons;
+   TBranch        *b_isoChargedHadrons;
+   TBranch        *b_isoNeutralHadrons;
+   TBranch	  *b_isPF;
+   TBranch	  *b_ManualIsoPF;
    EventElecComm( TString filename );
    virtual ~EventElecComm();
    virtual Int_t    Cut(Long64_t entry);
@@ -265,6 +288,13 @@ void EventElecComm::Init(TTree *tree)
    fChain->SetBranchAddress("id_loose", &id_loose, &b_id_loose);
    fChain->SetBranchAddress("id_medium", &id_medium, &b_id_medium);
    fChain->SetBranchAddress("id_tight", &id_tight, &b_id_tight);
+   fChain->SetBranchAddress("pfIso", &pfIso, &b_pfIso);
+   fChain->SetBranchAddress("detIso", &detIso, &b_detIso);
+   fChain->SetBranchAddress("isoChargedHadrons",&isoChargedHadrons,&b_isoChargedHadrons);
+   fChain->SetBranchAddress("isoNeutralHadrons",&isoNeutralHadrons,&b_isoNeutralHadrons);
+   fChain->SetBranchAddress("isoPhotons",&isoPhotons,&b_isoPhotons);
+   fChain->SetBranchAddress("isPF",&isPF,&b_isPF);
+   fChain->SetBranchAddress("ManualIsoPF",&ManualIsoPF,&b_ManualIsoPF);
    Notify();
 }
 

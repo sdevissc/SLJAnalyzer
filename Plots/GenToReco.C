@@ -21,20 +21,35 @@
 #include <TPaveText.h>
 #include <./EventElecComm.C>
 #include <TPaveStats.h>
+#include <TGaxis.h>
 using namespace std;
 
-const int Nbin2D=200; 
+const int Nbin2D=5000; 
+
 
 template <class Type>
-void SetStyle(Type *a,int color, int style, int fillstyle, const TString& xtitle,const TString& ytitle, float min, float max){
+void SetStyle(Type *a,int color, int style, int fillstyle, const TString& xtitle,const TString& ytitle, float min, float max,float sp,bool ratio){
         a->SetLineColor(color);
         a->SetMarkerColor(color);
         a->SetMarkerStyle(style);
         a->SetFillColor(color);
         a->SetFillStyle(fillstyle);
-	a->SetMarkerSize(0.8);
+	a->SetMarkerSize(1.4);
         a->GetXaxis()->SetTitle(xtitle);
         a->GetYaxis()->SetTitle(ytitle);
+	a->GetYaxis()->SetLabelSize( gStyle->GetLabelSize("Y")/(1-sp) );
+  	a->GetYaxis()->SetTitleSize( gStyle->GetTitleSize("Y")/(1-sp) );
+  	a->GetYaxis()->SetTitleOffset( gStyle->GetTitleOffset("Y")*(1-sp) );
+	a->GetXaxis()->SetLabelSize( gStyle->GetLabelSize("X") );
+	a->GetXaxis()->SetLabelOffset( gStyle->GetLabelOffset("X")*10 );
+	a->GetYaxis()->SetLabelOffset( gStyle->GetLabelOffset("Y") );
+        a->GetXaxis()->SetTitleSize( gStyle->GetTitleSize("X") );
+        a->GetXaxis()->SetTitleOffset( gStyle->GetTitleOffset("X") );
+	
+  	if(ratio) {
+  	  a->GetXaxis()->SetLabelSize( 0 );
+  	  a->GetXaxis()->SetTitleSize( 0 );
+  	}  
         if(min!=-777.0 && max!=-777.0 ){
                 a->SetMinimum(min);
                 a->SetMaximum(max);
@@ -42,17 +57,34 @@ void SetStyle(Type *a,int color, int style, int fillstyle, const TString& xtitle
 }
 
 template <class Type>
-void SetStyle(Type *a,int color, int style, const TString& xtitle,const TString& ytitle, float min, float max){
+void SetStyle(Type *a,int color, int style, const TString& xtitle,const TString& ytitle, float min, float max,float sp,bool ratio){
         a->SetLineColor(color);
         a->SetMarkerColor(color);
         a->SetMarkerStyle(style);
-        a->SetMarkerSize(0.8);
+        a->SetMarkerSize(1.4);
         a->GetXaxis()->SetTitle(xtitle);
         a->GetYaxis()->SetTitle(ytitle);
         if(min!=-777.0 && max!=-777.0 ){
                 a->SetMinimum(min);
                 a->SetMaximum(max);
         }
+	a->GetYaxis()->SetLabelSize( gStyle->GetLabelSize("Y")/(1-sp) );
+        a->GetYaxis()->SetTitleSize( gStyle->GetTitleSize("Y")/(1-sp) );
+        a->GetYaxis()->SetTitleOffset( gStyle->GetTitleOffset("Y")*(1-sp) );
+	a->GetXaxis()->SetLabelSize( gStyle->GetLabelSize("X") );
+        a->GetXaxis()->SetTitleSize( gStyle->GetTitleSize("X") );
+        a->GetXaxis()->SetTitleOffset( gStyle->GetTitleOffset("X") );
+	a->GetXaxis()->SetLabelOffset( 0.0 );
+        a->GetYaxis()->SetLabelOffset( gStyle->GetLabelOffset("Y") );
+        if(ratio) {
+          a->GetXaxis()->SetLabelSize( 0 );
+          a->GetXaxis()->SetTitleSize( 0 );
+        }
+        if(min!=-777.0 && max!=-777.0 ){
+                a->SetMinimum(min);
+                a->SetMaximum(max);
+        }
+
 }
 
 
@@ -66,11 +98,13 @@ class HistoMaker
 	TH1F* TemplatePt;
 	TH1F* TemplateEta;
 	TH1F *Pt[20],*EffPt[20],*EffEta[20],*Eta[20];
-
+	TH1F* HistoIsoEff[4];
 	TH1F* mvaDiscr[3][4];
 	float Eff[3][2][2][Nbin2D];
+	TH1F* IsoDiscr[4];
+        float IsoEff[4][Nbin2D];
 
-	TH1F *mva_e_pi,*themva;	
+	TH1F *mva_e_pi,*themva,*theiso;	
 
 	TH1F* ForIntegral;
 	TGraph *eEffvspiEff;
@@ -91,6 +125,7 @@ HistoMaker::HistoMaker(const TString& inputname,const TString & tag)
 	TemplatePt=new TH1F(inputname+tag+"Pt[0]","",nbinpt,ptx);
 	TemplateEta=new TH1F(inputname+tag+"Eta[0]","",nbineta,etax);
 	themva=new TH1F(inputname+tag+"mva","",Nbin2D,-1.1,1.1);	
+	theiso=new TH1F(inputname+tag+"iso","",Nbin2D,0,20);
 	for(int i=0;i<20;i++){
 		Pt[i]=(TH1F*)TemplatePt->Clone(Form("Pt_%d",i));
 		Eta[i]=(TH1F*)TemplateEta->Clone(Form("Eta_%d",i));
@@ -99,6 +134,10 @@ HistoMaker::HistoMaker(const TString& inputname,const TString & tag)
 	}
 	for(int i=0;i<3;i++)for(int j=0;j<4;j++){
                 mvaDiscr[i][j]=(TH1F*)themva->Clone(Form("mva_%d",i));
+        }
+	for(int i=0;i<4;i++){
+		HistoIsoEff[i]=new TH1F(Form(inputname+tag+"hiso_%d",i),"",Nbin2D,0,20);
+                IsoDiscr[i]=(TH1F*)theiso->Clone(Form("iso_%d",i));
         }
 
 }
@@ -110,10 +149,22 @@ HistoMaker::~HistoMaker()                 // destructor, just an example
 
 
 void HistoMaker::EffSelDiscr(){
+	TH1::SetDefaultSumw2(kTRUE);
+//	cout<<"Checking in EffSelDiscr"<<endl;
 	for(int k=0;k<Nbin2D;k++)for(int kin=0;kin<3;kin++)for(int seed=0;seed<2;seed++)for(int type=0;type<2;type++){
 		int denom=(type==0)?2:3;
-		Eff[kin][seed][type][k]         = mvaDiscr[kin][seed]->Integral(k+1,Nbin2D)/mvaDiscr[kin][denom]->Integral(0,Nbin2D+1);
+		Eff[kin][seed][type][k]         = mvaDiscr[kin][seed]->Integral(k+1,Nbin2D+1)/mvaDiscr[kin][denom]->Integral(0,Nbin2D+1);
+//		cout<<"-->nbin= "<<k<<" kin= "<<kin<<" seed= "<<seed<<" type= "<<type<<"  Eff["<<kin<<"]["<<seed<<"]["<<type<<"]["<<k<<"]="<<Eff[kin][seed][type][k]
+//		<< "[ mvaDiscr["<<kin<<"]["<<seed<<"]->Integral("<<k+1<<","<<Nbin2D+1<<")="<<mvaDiscr[kin][seed]->Integral(k+1,Nbin2D+1)<<" ]"
+//		<< "[ mvaDiscr["<<kin<<"]["<<denom<<"]->Integral("<<0<<","<<Nbin2D+1<<")="<<mvaDiscr[kin][denom]->Integral(0,Nbin2D+1)<<" ]"<<endl;
 	}
+	for(int k=0;k<Nbin2D+1;k++)for(int type=0;type<4;type++){
+                IsoEff[type][k]         = IsoDiscr[type]->Integral(0,k)/IsoDiscr[type]->Integral(0,Nbin2D+1);
+		HistoIsoEff[type]->Fill(k*(20.0/Nbin2D),IsoDiscr[type]->Integral(0,k)/IsoDiscr[type]->Integral(0,Nbin2D+1));
+		cout<<"-->nbin= "<<k<<" type= "<<type<<"  IsoEff["<<type<<"]["<<k<<"]="<<IsoEff[type][k]
+                << "[ IsoDiscr["<<type<<"]>Integral("<<k<<","<<Nbin2D+1<<""<<")="<<IsoDiscr[type]->Integral(0,k)<<" ]"
+                << "[ IsoDiscr["<<type<<"]->Integral("<<0<<","<<Nbin2D+1<<")="<<IsoDiscr[type]->Integral(0,Nbin2D+1)<<" ]"<<" "/*<<HistoIsoEff[type]->Integral()*/<<endl;
+        }
 
 }
 
@@ -126,7 +177,7 @@ void HistoMaker::Combine(){
 		EffEta[i]->Add(Eta[i]);
 		EffEta[i]->Divide(Eta[0]);
 	}
-	cout<<EffPt[1]->Integral()<<" "<<EffEta[1]->Integral()<<" "<<EffPt[4]->Integral()<<" "<<EffEta[4]->Integral()<<endl;
+//	cout<<EffPt[1]->Integral()<<" "<<EffEta[1]->Integral()<<" "<<EffPt[4]->Integral()<<" "<<EffEta[4]->Integral()<<endl;
 	
 }
 
@@ -137,7 +188,9 @@ class SLPlotter                   // begin declaration of the class
     	SLPlotter(const TString &,const TString &);     // constructor
     	~SLPlotter();                  // destructor
 	void initialize();
-	void setTDRStyle();
+	void officialStyle();
+	vector<TPad*> getPads(bool, float&);
+	void cmsPrel(float lumi, float , bool,bool,float);
 	EventElecComm *Evt;
 	int nentries;
 	TFile *file;
@@ -210,8 +263,8 @@ void SLPlotter::initialize(){
         string processline;
         Processes >>   ProcName;
         Evt = new EventElecComm(ProcName);
-//        nentries =Evt->fChain->GetEntriesFast();
-	nentries =1500000;
+        nentries =Evt->fChain->GetEntriesFast();
+//	nentries =1500000;
 }
 
 
@@ -231,27 +284,20 @@ void SLPlotter::getPlot(int log,const TString& process){
 void SLPlotter::GetEfficiencies(int log,TString &process){
 	TH1::SetDefaultSumw2(kTRUE);
 	ProcessName = process;
-	setTDRStyle();
+	officialStyle();
+	bool simOnly=true;
+	 float energy=13;
+	float lumi=-1;
+	bool cmsPrelOnLeft=true;
+	float sp;
+	bool ratio=false;
         TH1::SetDefaultSumw2(kTRUE);
-        TCanvas *can = new TCanvas("h", "bla",600,600);
-        can->SetLeftMargin(0.10);
-        can->SetTopMargin(0.07);
-        can->SetRightMargin(0.05);
-        can->SetBottomMargin(0.1);
-
-	TLegend *legend=new TLegend(0.12,0.8,0.45,0.92);
-        legend->SetBorderSize(0);
+        TCanvas *can = new TCanvas("h", "bla");
+	vector<TPad*> pads=getPads(ratio,sp);
+	cmsPrel(lumi, energy, simOnly, cmsPrelOnLeft,sp);
+	TLegend *legend=new TLegend(0.5,0.8,0.9,0.92);
         legend->SetFillColor(0);
-        legend->SetTextSize(0.020);
-
-	TPaveText *text=new TPaveText(0.18,0.94,0.3,0.99,"NDC");
-	text->AddText("CMS simulation");
-	text->SetTextSize(0.035);
-	text->SetBorderSize(0);
-        text->SetFillColor(0);
-	text->Draw();
 //---------------------------------------------------------	
-        legend->SetTextSize(0.020);
 	legend->AddEntry(electron->EffPt[1],"e_{B}#rightarrow TDS (all PU)");
         legend->AddEntry(electron_lowPU->EffPt[1],"e_{B}#rightarrow TDS (<30 PU)");
         legend->AddEntry(electron_highPU->EffPt[1],"e_{B}#rightarrow TDS (>30 PU)");
@@ -264,12 +310,12 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
         gPad->SetGridy();
 	gPad->SetLogx(log);
 
-	SetStyle(electron->EffPt[1],1,20,3003,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
-	SetStyle(electron_lowPU->EffPt[1],2,21,3004,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
-	SetStyle(electron_highPU->EffPt[1],4,22,3005,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
-	SetStyle(pion->EffPt[1],1,23,3006,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
-        SetStyle(pion_lowPU->EffPt[1],2,33,3002,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
-        SetStyle(pion_highPU->EffPt[1],4,34,3017,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10);
+	SetStyle(electron->EffPt[1],1,20,3003,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10,sp,ratio);
+	SetStyle(electron_lowPU->EffPt[1],2,21,3004,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10,sp,ratio);
+	SetStyle(electron_highPU->EffPt[1],4,22,3005,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10,sp,ratio);
+	SetStyle(pion->EffPt[1],1,23,3006,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10,sp,ratio);
+        SetStyle(pion_lowPU->EffPt[1],2,33,3002,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10,sp,ratio);
+        SetStyle(pion_highPU->EffPt[1],4,34,3017,"p_{T} of the generated particle","Efficiency",0.02,log==0?1.2:10,sp,ratio);
 
 	electron->EffPt[1]->Draw("pe2");
 	electron_lowPU->EffPt[1]->Draw("pe2same");
@@ -280,17 +326,13 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
 
 
 	legend->Draw();	
-	text->Draw();
 	can->Print(Form(ProcessName+"_Electron_and_pion_TDS_SeedEff_vs_Pt_log%d_%s.pdf",log,ProcessFile.c_str()));	
 	legend->Clear();
 //----------------------------------------------------------------
 
 
-        legend->SetTextSize(0.020);
-//        legend->AddEntry(electron->EffPt[1],"e_{B}#rightarrow TDS");
         legend->AddEntry(electron->EffPt[2],"e: ECAL-driven ");
         legend->AddEntry(electron->EffPt[3],"e: ECAL-driven or Tracker-driven");
-  //      legend->AddEntry(pion->EffPt[1],"#pi#rightarrow TDS");
         legend->AddEntry(pion->EffPt[2],"#pi: ECAL-driven");
         legend->AddEntry(pion->EffPt[3],"#pi:ECAL-driven or Tracker-driven");
 
@@ -298,24 +340,22 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
         gPad->SetGridx();
         gPad->SetGridy();
         gPad->SetLogx(1);
+	gPad->SetLogy(0);
+        SetStyle(electron->EffPt[1],1,20,3003,"p_{T} of the generated particle (GeV)","Efficiency",0.0,1.4,sp,ratio);
+        SetStyle(electron->EffPt[2],2,26,3004,"p_{T} of the generated particle (GeV)","Efficiency",0.0,1.4,sp,ratio);
+        SetStyle(electron->EffPt[3],4,22,3005,"p_{T} of the generated particle (GeV)","Efficiency",0.0,1.4,sp,ratio);
+        SetStyle(pion->EffPt[1],1,23,3006,"p_{T} of the generated particle (GeV)","Efficiency",0.0,1.05,sp,ratio);
+        SetStyle(pion->EffPt[2],2,24,3002,"p_{T} of the generated particle (GeV)","Efficiency",0.0,1.05,sp,ratio);
+        SetStyle(pion->EffPt[3],4,20,3017,"p_{T} of the generated particle (GeV)","Efficiency",0.0,1.05,sp,ratio);
 
-        SetStyle(electron->EffPt[1],1,20,3003,"p_{T} of the generated particle","Efficiency",0.0,1.05);
-        SetStyle(electron->EffPt[2],2,26,3004,"p_{T} of the generated particle","Efficiency",0.0,1.05);
-        SetStyle(electron->EffPt[3],4,22,3005,"p_{T} of the generated particle","Efficiency",0.0,1.05);
-        SetStyle(pion->EffPt[1],1,23,3006,"p_{T} of the generated particle","Efficiency",0.0,1.05);
-        SetStyle(pion->EffPt[2],2,24,3002,"p_{T} of the generated particle","Efficiency",0.0,1.05);
-        SetStyle(pion->EffPt[3],4,20,3017,"p_{T} of the generated particle","Efficiency",0.0,1.05);
-
-    //    electron->EffPt[1]->Draw("pe2");
         electron->EffPt[2]->Draw("pe2");
         electron->EffPt[3]->Draw("pe2same");
-   //     pion->EffPt[1]->Draw("pe2same");
         pion->EffPt[2]->Draw("pe2same");
         pion->EffPt[3]->Draw("pe2same");
-
-
+	electron->EffPt[2]->GetXaxis()->SetMoreLogLabels(1);
+	electron->EffPt[2]->GetXaxis()->SetLabelOffset(0.0);
         legend->Draw();
-	text->Draw();
+	cmsPrel(lumi, energy, simOnly, cmsPrelOnLeft,sp);
         can->Print(Form(ProcessName+"_Electron_and_pion_TDSvsEDSvsTDSOREDS_seedeff_vs_Pt_log%d_%s.pdf",log,ProcessFile.c_str()));
         legend->Clear();
 
@@ -323,7 +363,7 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
 //------------------------------------------------------------------------
 
 
-        legend->SetTextSize(0.020);
+//        legend->SetTextSize(0.020);
         legend->AddEntry(electron->EffPt[1],"e_{B}#rightarrow TDS");
         legend->AddEntry(electron->EffPt[6],"e_{B}#rightarrow EDS (dR)");
         legend->AddEntry(electron->EffPt[2],"e_{B}#rightarrow EDS");
@@ -336,12 +376,12 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
         gPad->SetGridy();
         gPad->SetLogx(log);
 
-        SetStyle(electron->EffPt[1],1,20,3003,"p_{T} of the generated particle","Efficiency",0.0,1.05);
-        SetStyle(electron->EffPt[6],1,21,3004,"p_{T} of the generated particle","Efficiency",0.0,1.05);
-        SetStyle(electron->EffPt[2],4,22,3005,"p_{T} of the generated particle","Efficiency",0.0,1.05);
-	SetStyle(electron->EffPt[7],4,23,3006,"p_{T} of the generated particle","Efficiency",0.0,1.05);
-	SetStyle(electron_isolated[0]->EffPt[1],2,20,3003,"p_{T} of the generated particle","Efficiency",0.99,550);
-	SetStyle(electron_isolated[0]->EffPt[6],2,20,3004,"p_{T} of the generated particle","Efficiency",0.99,550);
+        SetStyle(electron->EffPt[1],1,20,3003,"p_{T} of the generated particle","Efficiency",0.0,1.05,sp,ratio);
+        SetStyle(electron->EffPt[6],1,21,3004,"p_{T} of the generated particle","Efficiency",0.0,1.05,sp,ratio);
+        SetStyle(electron->EffPt[2],4,22,3005,"p_{T} of the generated particle","Efficiency",0.0,1.05,sp,ratio);
+	SetStyle(electron->EffPt[7],4,23,3006,"p_{T} of the generated particle","Efficiency",0.0,1.05,sp,ratio);
+	SetStyle(electron_isolated[0]->EffPt[1],2,20,3003,"p_{T} of the generated particle","Efficiency",0.99,550,sp,ratio);
+	SetStyle(electron_isolated[0]->EffPt[6],2,20,3004,"p_{T} of the generated particle","Efficiency",0.99,550,sp,ratio);
 
         electron->EffPt[1]->Draw("pe2");
         electron->EffPt[6]->Draw("pe2same");
@@ -356,14 +396,14 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
         can->Print(Form(ProcessName+"_Electron_and_pion_TDSvsEDSvsTDSOREDS_CheckDeltaRseedeff_vs_Pt_log%d_%s.pdf",log,ProcessFile.c_str()));
         legend->Clear();
 
-	text->Draw();
+	//text->Draw();
 
 //------------------------------------------------------------------------	
 
 
-        legend->SetTextSize(0.020);
+//        legend->SetTextSize(0.020);
         //ilegend->AddEntry(electron_isolated->EffPt[1],"e_{V}#rightarrow TDS");
-        //legend->AddEntry(electron_isolated->EffPt[2],"e_{V}#rightarrow EDS");
+//        legend->AddEntry(electron_isolated[0]->EffPt[3],"e from Z boson decay");
         //legend->AddEntry(electron_isolated->EffPt[3],"e_{V}#rightarrow  TDS #wedge EDS");
 
 	
@@ -371,9 +411,9 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
         gPad->SetGridy();
         gPad->SetLogx(1);
 
-        SetStyle(electron_isolated[0]->EffPt[1],1,20,3003,"p_{T} of the generated particle","Efficiency",0.99,550);
-        SetStyle(electron_isolated[0]->EffPt[2],2,21,3004,"p_{T} of the generated particle","Efficiency",0.99,550);
-        SetStyle(electron_isolated[0]->EffPt[3],2,22,3005,"p_{T} of the generated particle","Efficiency(#%)",0.99,550);
+        SetStyle(electron_isolated[0]->EffPt[1],1,20,3003,"p_{T} of the generated particle","Efficiency",0.99,550,sp,ratio);
+        SetStyle(electron_isolated[0]->EffPt[2],2,21,3004,"p_{T} of the generated particle","Efficiency",0.99,550,sp,ratio);
+        SetStyle(electron_isolated[0]->EffPt[3],2,22,3005,"p_{T} of the generated particle","Efficiency(#%)",0.99,550,sp,ratio);
 	
 //	electron_isolated->EffPt[3]->GetYaxis()->SetNdivisions(520);
 //	electron_isolated->EffPt[3]->Scale(100);
@@ -383,28 +423,31 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
 	TH1F*h =(TH1F*)electron_isolated[0]->EffPt[3]->Clone("improvement");
 	h->Add(electron_isolated[0]->EffPt[2],-1);
 	h->Scale(100);
-	SetStyle(h,1,23,3005,"p_{T} of the generated electron","Efficiency Gain (%)",0,55);
+	SetStyle(h,1,23,3005,"p_{T} of the generated electron (GeV)","Efficiency Gain (%)",0,65,sp,ratio);
 //	legend->AddEntry(h,"#varepsilon_{TDS #wedge EDS}/#varepsilon_{EDS}");
-	h->Draw("p");
+	h->Draw("pe2");
+	h->GetXaxis()->SetLabelOffset(0.0);
+	legend->AddEntry(h,"e from Z boson decay");
 
-
-  //      legend->Draw();
-	text->Draw();
+        legend->Draw();
+	//text->Draw();
+	cmsPrel(lumi, energy, simOnly, cmsPrelOnLeft,sp);
+	
         can->Print(Form(ProcessName+"_IsolatedElectron_TDSvsEDSvsTDSOREDS_seedeff_vs_Pt_log%d_%s.pdf",log,ProcessFile.c_str()));
         legend->Clear();
 
 //----------------------------------------------------------
 
-	SetStyle(electron->EffEta[1],1,22,3004,"#eta_{T} of the generated particle","",0.001,1.2);
-        SetStyle(electron_lowPU->EffEta[1],2,23,3005,"#eta_{T} of the generated particle","",0.001,1.2);
-        SetStyle(electron_highPU->EffEta[1],3,24,3006,"#eta_{T} of the generated particle","",0.001,1.2);
+	SetStyle(electron->EffEta[1],1,22,3004,"#eta_{T} of the generated particle","",0.001,1.2,sp,ratio);
+        SetStyle(electron_lowPU->EffEta[1],2,23,3005,"#eta_{T} of the generated particle","",0.001,1.2,sp,ratio);
+        SetStyle(electron_highPU->EffEta[1],3,24,3006,"#eta_{T} of the generated particle","",0.001,1.2,sp,ratio);
 
 	electron->EffEta[1]->Draw("hpe1");
         electron->EffEta[4]->Draw("hpe1same");
         electron->EffEta[5]->Draw("hpe1same");
 
 	legend->Draw();
-	text->Draw();
+//	text->Draw();
         can->Print(ProcessName+"_Electron_RecoEff_vs_Eta.pdf");
 	//-------------------------------------------------------------------
 
@@ -426,7 +469,7 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
 	legend->AddEntry(pion->EffPt[1],"#pi#rightarrow Seed (all PU)");
 	legend->AddEntry(pion->EffPt[4],"#pi#rightarrow Seed (<30)");
 	legend->AddEntry(pion->EffPt[5],"#pi#rightarrow Seed (>30)");
-	text->Draw();
+//	text->Draw();
         legend->Draw();
 
         can->Print(ProcessName+"_Pion_RecoEff_vs_Pt.pdf");
@@ -437,12 +480,12 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
         pion->EffEta[4]->Draw("pe1same");	
         pion->EffEta[5]->Draw("pe1same");
 	legend->Draw();
-	text->Draw();
+//	text->Draw();
 	can->Print(ProcessName+"_Pion_RecoEff_vs_Eta.pdf");
 
 	legend->Clear();
 //--------------------------------------------GSF id Pt Eff
-	 legend->SetTextSize(0.020);
+//	 legend->SetTextSize(0.020);
         legend->AddEntry(electron_isolated[0]->EffPt[8],"e: ecal-driven");
         legend->AddEntry(background[0]->EffPt[8],"#pi: ecal driven");
 	legend->AddEntry(electron_isolated[0]->EffPt[9],"e: ecal-driven or tracker-driven");
@@ -453,12 +496,12 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
         gPad->SetGridy();
         gPad->SetLogx(1);
 	gPad->SetLogy(1);
-        SetStyle(electron_isolated[0]->EffPt[8],kBlack,20,"p_{T} of the generated particle","Efficiency",0.002,log==0?1.2:1.2);
-        SetStyle(background[0]->EffPt[8],1,21,"p_{T} of the generated particle","Efficiency",0.002,log==0?1.2:1.2);
-	SetStyle(electron_isolated[0]->EffPt[9],kRed,24,"p_{T} of the generated particle","Efficiency",0.002,log==0?1.2:1.2);
-        SetStyle(background[0]->EffPt[9],2,25,"p_{T} of the generated particle","Efficiency",0.002,log==0?1.2:1.20);
-	SetStyle(electron_isolated[0]->EffPt[19],kRed,24,"p_{T} of the generated particle","Efficiency",0.002,log==0?1.2:1.2);
-        SetStyle(background[0]->EffPt[19],2,25,"p_{T} of the generated particle","Efficiency",0.002,log==0?1.2:1.20);
+        SetStyle(electron_isolated[0]->EffPt[8],kBlack,20,"p_{T} of the generated particle (GeV)","Efficiency",0.002,log==0?1.2:1.2,sp,ratio);
+        SetStyle(background[0]->EffPt[8],1,21,"p_{T} of the generated particle (GeV)","Efficiency",0.002,log==0?1.2:1.2,sp,ratio);
+	SetStyle(electron_isolated[0]->EffPt[9],kRed,24,"p_{T} of the generated particle (GeV)","Efficiency",0.002,log==0?1.2:1.2,sp,ratio);
+        SetStyle(background[0]->EffPt[9],2,25,"p_{T} of the generated particle (GeV)","Efficiency",0.002,log==0?1.2:1.20,sp,ratio);
+	SetStyle(electron_isolated[0]->EffPt[19],kRed,24,"p_{T} of the generated particle (GeV)","Efficiency",0.002,log==0?1.2:1.2,sp,ratio);
+        SetStyle(background[0]->EffPt[19],2,25,"p_{T} of the generated particle (GeV)","Efficiency",0.002,log==0?1.2:1.20,sp,ratio);
 
         electron_isolated[0]->EffPt[8]->Draw("p");
         background[0]->EffPt[8]->Draw("psame");
@@ -467,11 +510,11 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
 
 
         legend->Draw();
-        text->Draw();
+      //  text->Draw();
         can->Print(Form(ProcessName+"_Electron_and_background_EDS_TDS_SeedEff_vs_Pt_log%d_%s.pdf",log,ProcessFile.c_str()));
 
 	legend->Clear();
-
+	gPad->SetLogx(1);
 
 	TH1F *div[5];
 	div[0]=(TH1F*)electron_isolated[0]->EffPt[9]->Clone();
@@ -487,36 +530,27 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
         div[4]->Scale(100);
 		
 	gPad->SetLogy(0);
-//	div[0]->Draw("p");
 	div[1]->Draw("p");
 	div[4]->Draw("psame");
-
-	TLegend *legend2=new TLegend(0.32,0.8,0.65,0.92);
-        legend2->SetBorderSize(0);
+	div[1]->GetXaxis()->SetMoreLogLabels(1);
+	TLegend *legend2=new TLegend(0.52,0.8,0.85,0.92);
         legend2->SetFillColor(0);
-        legend2->SetTextSize(0.035);
 
-	 legend2->SetTextSize(0.020);
-   //     legend2->AddEntry(div[0],"mva>0");
-	legend2->AddEntry(div[1],"H#rightarrow(ZZ)#rightarrow 4e WP.");
+	 legend2->SetTextSize(0.03);
+	legend2->AddEntry(div[1],"H#rightarrow(ZZ)#rightarrow 4e WP");
 	legend2->AddEntry(div[4],"mva>0.8 WP");
 
 	legend2->Draw();
 	
-	TPaveText *text2=new TPaveText(0.18,0.94,0.3,0.99,"NDC");
-        text2->AddText("CMS simulation");
-        text2->SetTextSize(0.035);
-        text2->SetBorderSize(0);
-        text2->SetFillColor(0);
-	text2->Draw();		
-	SetStyle(div[0],1,25,"p_{T} of the generated particle","Efficiency Gain (%)",0.002,log==0?30:30);
-	SetStyle(div[1],2,26,"p_{T} of the generated particle","Efficiency Gain (%)",0.002,log==0?30:30);
-	SetStyle(div[4],4,29,"p_{T} of the generated particle","Efficiency Gain (%)",0.002,log==0?30:30);
+	SetStyle(div[0],1,25,"p_{T} of the generated particle (GeV)","Efficiency Gain (%)",0.002,log==0?30:30,sp,ratio);
+	SetStyle(div[1],2,26,"p_{T} of the generated particle (GeV)","Efficiency Gain (%)",0.002,log==0?30:30,sp,ratio);
+	SetStyle(div[4],4,29,"p_{T} of the generated particle (GeV)","Efficiency Gain (%)",0.002,log==0?30:30,sp,ratio);
+	cmsPrel(lumi, energy, simOnly, cmsPrelOnLeft,sp);
 	can->Print(Form(ProcessName+"_DIV_Electron_and_background_EDS_TDS_SeedEff_vs_Pt_log%d_%s.pdf",log,ProcessFile.c_str()));
 	gPad->SetLogy(1);
 //-----------------------------------------Gsf Id Eta Eff
 //	legend->Clear();
-	legend->SetTextSize(0.020);
+//	legend->SetTextSize(0.030);
  //       legend->AddEntry(electron_isolated[0]->EffEta[8],"e: ecal-driven");
  //       legend->AddEntry(background[0]->EffEta[8],"#pi: ecal driven");
  //       legend->AddEntry(electron_isolated[0]->EffEta[9],"e: ecal-driven or tracker-driven");
@@ -527,10 +561,10 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
         gPad->SetGridy();
         gPad->SetLogy(0);
 	gPad->SetLogx(0);
-        SetStyle(electron_isolated[0]->EffEta[8],kBlack,20,"#eta of the generated particle","Efficiency",0.002,log==0?1.2:2);
-        SetStyle(background[0]->EffEta[8],1,21,3006,"#eta of the generated particle","Efficiency",0.002,log==0?1.2:2);
-        SetStyle(electron_isolated[0]->EffEta[9],kRed,24,"#eta of the generated particle","Efficiency",0.002,log==0?1.2:2);
-        SetStyle(background[0]->EffEta[9],2,25,"#eta of the generated particle","Efficiency",0.002,log==0?1.2:2);
+        SetStyle(electron_isolated[0]->EffEta[8],kBlack,20,"#eta of the generated particle","Efficiency",0.002,log==0?1.2:2,sp,ratio);
+        SetStyle(background[0]->EffEta[8],1,21,3006,"#eta of the generated particle","Efficiency",0.002,log==0?1.2:2,sp,ratio);
+        SetStyle(electron_isolated[0]->EffEta[9],kRed,24,"#eta of the generated particle","Efficiency",0.002,log==0?1.2:2,sp,ratio);
+        SetStyle(background[0]->EffEta[9],2,25,"#eta of the generated particle","Efficiency",0.002,log==0?1.2:2,sp,ratio);
 
         electron_isolated[0]->EffEta[8]->Draw("p");
         background[0]->EffEta[8]->Draw("psame");
@@ -539,23 +573,30 @@ void SLPlotter::GetEfficiencies(int log,TString &process){
 
 
         legend->Draw();
-        text->Draw();
+      //  text->Draw();
         can->Print(Form(ProcessName+"_Electron_and_background_EDS_TDS_SeedEff_vs_Eta_log%d_%s.pdf",log,ProcessFile.c_str()));
 
 
 	delete legend;
+	
 	delete can;
+
+	
 }
 
 void SLPlotter::MakeEffvsEffPlot(TString &process){
-	setTDRStyle();
-	TCanvas *can = new TCanvas("h", "bla",600,600);
-        can->SetLeftMargin(0.17);
-        can->SetTopMargin(0.07);
-        can->SetRightMargin(0.07);
-        can->SetBottomMargin(0.15);
+	officialStyle();
+	bool simOnly=true;
+         float energy=13;
+        float lumi=-1;
+        bool cmsPrelOnLeft=true;
+        float sp;
+        bool ratio=false;
+	TCanvas *can = new TCanvas("h", "bla");
+	vector<TPad*> pads=getPads(ratio,sp);
 	ProcessName=process;
-	 TGraph *gr_pf_all[3][2][2][2][2];
+	TGraph *gr_pf_all[3][2][2][2][2];
+	TGraph *gr_iso_all[4][2];
 
 	int col[24];
         col[0]=1;
@@ -622,28 +663,22 @@ int mark2[12];
         mark2[9]=24;
         mark2[10]=20;
         mark2[11]=24;
-	TPaveText *text=new TPaveText(0.18,0.94,0.3,0.99,"NDC");
-        text->AddText("CMS simulation");
-        text->SetTextSize(0.035);
-        text->SetBorderSize(0);
-        text->SetFillColor(0);
 	TPaveText *textkin[3];
 	for(int kin=0;kin<3;kin++){
-		textkin[kin]=new TPaveText(0.3,0.88,0.8,0.88,"NDC");
+		textkin[kin]=new TPaveText(0.4,0.88,0.8,0.88,"NDC");
 		textkin[kin]->SetTextSize(0.03);
                 textkin[kin]->SetBorderSize(0);
                 textkin[kin]->SetFillColor(0);
 		textkin[kin]->SetTextAlign(10);
 	}
         textkin[0]->AddText("P_{T}< 10 GeV");
-//	textkin[1]->AddText("10 <P_{T}< 20 GeV");
 	textkin[1]->AddText("P_{T}> 10 GeV");
 	textkin[2]->AddText("P_{T} > 20 GeV");
 	cout<<"Now filling the graphs"<<endl;
 	TPaveText *textDef[2][2];
 	
 	for(int sig=0;sig<2;sig++)for(int bck=0;bck<2;bck++){
-		textDef[sig][bck]=new TPaveText(0.3,0.81,0.8,0.86,"NDC");
+		textDef[sig][bck]=new TPaveText(0.40,.81,0.8,0.86,"NDC");
 		textDef[sig][bck]->SetTextSize(0.03);
 		textDef[sig][bck]->SetTextAlign(10);
         	textDef[sig][bck]->SetBorderSize(0);
@@ -667,18 +702,12 @@ int mark2[12];
 			gr_pf_all[kin][seed][type][0][1]=new TGraph(Nbin2D,pion->Eff[kin][seed][type],electron_isolated[0]->Eff[kin][seed][type]);
 			gr_pf_all[kin][seed][type][1][1]=new TGraph(Nbin2D,pion->Eff[kin][seed][type],electron->Eff[kin][seed][type]);
 			for(int sig=0;sig<2;sig++)for(int bck=0;bck<2;bck++){
-				gr_pf_all[kin][seed][type][sig][bck]->SetMarkerStyle(20+4*seed);
-				gr_pf_all[kin][seed][type][sig][bck]->SetMarkerColor(1+seed);
+				SetStyle((gr_pf_all[kin][seed][type][sig][bck]),1+seed,20+4*seed,"Background efficiency","Signal efficiency",0.002,0,sp,ratio);
 				gr_pf_all[kin][seed][type][sig][bck]->SetMinimum(0.5);
 				gr_pf_all[kin][seed][type][sig][bck]->GetXaxis()->SetLimits(0.00,(type==0)?0.4:(kin==0)?0.008:0.02);
 				gr_pf_all[kin][seed][type][sig][bck]->GetXaxis()->SetNdivisions(404,0);
 				gr_pf_all[kin][seed][type][sig][bck]->GetYaxis()->SetRangeUser(0.0055,1.4);
-				gr_pf_all[kin][seed][type][sig][bck]->GetXaxis()->SetTitle("Background efficiency");
-				gr_pf_all[kin][seed][type][sig][bck]->GetYaxis()->SetTitle("Signal efficiency");
-				gr_pf_all[kin][seed][type][sig][bck]->GetXaxis()->SetTitleSize(0.04);
-				gr_pf_all[kin][seed][type][sig][bck]->GetYaxis()->SetTitleSize(0.04);
-				gr_pf_all[kin][seed][type][sig][bck]->GetYaxis()->SetTitleOffset(1.5);
-				gr_pf_all[kin][seed][type][sig][bck]->GetXaxis()->SetTitleOffset(1.5);
+				gr_pf_all[kin][seed][type][sig][bck]->SetTitle("");
 			}
 		}
 	}
@@ -687,8 +716,7 @@ int mark2[12];
 		cout<<kin<<" "<<type<<" "<<sig<<" "<<bck<<endl;
 		gr_pf_all[kin][0][type][sig][bck]->Draw("ap");
 		gr_pf_all[kin][1][type][sig][bck]->Draw("psame");
-		TLegend *legend=new TLegend(0.2,0.7,0.92,0.80);
-        	legend->SetBorderSize(0);
+		TLegend *legend=new TLegend(0.3,0.7,0.92,0.77);
         	legend->SetFillColor(0);
         	legend->SetTextSize(0.03);
 		TString efftype = (type==0)?"eff ID":"eff RECO+ID";
@@ -696,12 +724,11 @@ int mark2[12];
 		legend->AddEntry(gr_pf_all[kin][0][type][sig][bck],      "ecal-driven "+efftype,"p");
 		legend->Draw();
 		textkin[kin]->Draw();
-		text->Draw();
 		textDef[sig][bck]->Draw();
+		cmsPrel(lumi, energy, simOnly, cmsPrelOnLeft,sp);
 		can->Print(Form(ProcessName+"effvseff_%d_%d_%d_%d.pdf",kin,type,sig,bck));	
 		delete legend;
 	}
-	// Getting the ID and RECO+ID plots merged
         for(int kin=0;kin<3;kin++)for(int type=0;type<2;type++)for(int sig=0;sig<2;sig++)for(int bck=0;bck<2;bck++){
                 cout<<kin<<" "<<type<<" "<<sig<<" "<<bck<<endl;
                 gr_pf_all[kin][0][0][sig][bck]->Draw("ap");
@@ -709,7 +736,6 @@ int mark2[12];
 		gr_pf_all[kin][0][1][sig][bck]->Draw("psame");
                 gr_pf_all[kin][1][1][sig][bck]->Draw("psame");
                 TLegend *legend=new TLegend(0.2,0.7,0.92,0.8);
-                legend->SetBorderSize(1);
                 legend->SetFillColor(0);
                 legend->SetTextSize(0.03);
                 TString efftype = (type==0)?"eff ID":"eff RECO+ID";
@@ -722,12 +748,90 @@ int mark2[12];
 		
                 legend->Draw();
                 textkin[kin]->Draw();
-                text->Draw();
                 textDef[sig][bck]->Draw();
+		cmsPrel(lumi, energy, simOnly, cmsPrelOnLeft,sp);
                 can->Print(Form(ProcessName+"merged_effvseff_%d_%d_%d.pdf",kin,sig,bck));
                 delete legend;
         }
+
+
+	//************************** ISOLATION ************************
+	//
 	
+        for(int type=0;type<4;type++) {
+		float xmin=0.0,xmax=0.5,ymin=0.6,ymax=1.2;
+        	gr_iso_all[type][0]=new TGraph(Nbin2D,electron->IsoEff[type],electron_isolated[0]->IsoEff[type]);
+		gr_iso_all[type][1]=new TGraph(Nbin2D,pion->IsoEff[type],electron_isolated[0]->IsoEff[type]);
+                SetStyle(gr_iso_all[type][0],1+type,20+4*type,"Background efficiency","Signal efficiency",0.002,1.0,sp,ratio);
+		SetStyle(gr_iso_all[type][1],1+type,20+4*type,"Background efficiency","Signal efficiency",0.002,1.0,sp,ratio);
+                gr_iso_all[type][0]->SetMinimum(0.0);
+                gr_iso_all[type][0]->GetXaxis()->SetLimits(xmin,xmax);
+                gr_iso_all[type][0]->GetXaxis()->SetNdivisions(404,0);
+                gr_iso_all[type][0]->GetYaxis()->SetRangeUser(ymin,ymax);
+                gr_iso_all[type][0]->SetTitle("");
+		gr_iso_all[type][1]->SetMinimum(0.0);
+                gr_iso_all[type][1]->GetXaxis()->SetLimits(xmin,xmax);
+                gr_iso_all[type][1]->GetXaxis()->SetNdivisions(404,0);
+                gr_iso_all[type][1]->GetYaxis()->SetRangeUser(ymin,ymax);
+                gr_iso_all[type][1]->SetTitle("");
+        }
+	TLegend *legend=new TLegend(0.4,0.85,0.92,0.92);
+	legend->AddEntry(gr_iso_all[0][0],      "PF-based isolation","p");
+	legend->AddEntry(gr_iso_all[1][0],      "Detector-based isolation","p");
+	TLegend *legend2=new TLegend(0.2,0.75,0.92,0.8);
+        legend2->AddEntry(gr_iso_all[2][0],      "PF-based isolation","p");
+        legend2->AddEntry(gr_iso_all[3][0],      "Detector-based isolation","p");
+        gr_iso_all[0][0]->Draw("al");
+        gr_iso_all[1][0]->Draw("lsame");
+        gr_iso_all[0][0]->SetMarkerStyle(21);
+        gr_iso_all[1][0]->SetMarkerStyle(25);
+        legend->Draw();
+        cmsPrel(lumi, energy, simOnly, cmsPrelOnLeft,sp);
+        can->Print(ProcessName+"_eV_vs_eB_ROC_EB_isolation.pdf");
+
+	gr_iso_all[0][1]->Draw("al");
+        gr_iso_all[1][1]->Draw("lsame");
+        gr_iso_all[0][1]->SetMarkerStyle(21);
+        gr_iso_all[1][1]->SetMarkerStyle(25);
+        legend->Draw();
+        cmsPrel(lumi, energy, simOnly, cmsPrelOnLeft,sp);
+        can->Print(ProcessName+"_eV_vs_pion_ROC_EB_isolation.pdf");
+	
+	gr_iso_all[2][0]->Draw("al");
+        gr_iso_all[3][0]->Draw("lsame");
+        gr_iso_all[2][0]->SetMarkerStyle(21);
+        gr_iso_all[3][0]->SetMarkerStyle(25);
+        legend2->Draw();
+        cmsPrel(lumi, energy, simOnly, cmsPrelOnLeft,sp);
+        can->Print(ProcessName+"_eV_vs_eB_ROC_EE_isolation.pdf");
+
+        gr_iso_all[2][1]->Draw("al");
+        gr_iso_all[3][1]->Draw("lsame");
+        gr_iso_all[2][1]->SetMarkerStyle(21);
+        gr_iso_all[3][1]->SetMarkerStyle(25);
+        legend2->Draw();
+        cmsPrel(lumi, energy, simOnly, cmsPrelOnLeft,sp);
+        can->Print(ProcessName+"_eV_vs_pion_ROC_EE_isolation.pdf");
+			
+
+	TCanvas *can2 = new TCanvas("h", "bla");
+        SetStyle(electron->HistoIsoEff[0],1,24,3004,"Efficiency","Discr",0.002,1.0,sp,ratio);
+        SetStyle(electron->HistoIsoEff[1],2,25,3004,"Efficiency","Discr",0.002,1.0,sp,ratio);
+        electron->HistoIsoEff[0]->Draw("histo");
+        electron->HistoIsoEff[1]->Draw("histosame");
+        can2->Print(ProcessName+"_Discrimination_eB_isolation.pdf");
+        SetStyle(electron_isolated[0]->HistoIsoEff[0],1,24,3004,"Efficiency","Discr",0.002,1.0,sp,ratio);
+        SetStyle(electron_isolated[0]->HistoIsoEff[1],2,25,3004,"Efficiency","Discr",0.002,1.0,sp,ratio);
+        electron_isolated[0]->HistoIsoEff[0]->Draw("histo");
+        electron_isolated[0]->HistoIsoEff[1]->Draw("histosame");
+        can2->Print(ProcessName+"_Discrimination_eV_isolation.pdf");
+        pion->HistoIsoEff[0]->Draw("histo");
+        pion->HistoIsoEff[1]->Draw("histosame");
+        SetStyle(pion->HistoIsoEff[0],1,24,3004,"Efficiency","Discr",0.002,1.0,sp,ratio);
+        SetStyle(pion->HistoIsoEff[1],2,25,3004,"Efficiency","Discr",0.002,1.0,sp,ratio);
+        can2->Print(ProcessName+"_Discrimination_pi_isolation.pdf");
+
+
 }
 
 
@@ -855,6 +959,7 @@ void SLPlotter::TheFill(HistoMaker *obj,EventElecComm *Evt){
                                 if(cond1 || cond2 || cond3){
                                         obj->Pt[19]->Fill(Evt->ptGen);
                                         obj->Eta[19]->Fill(Evt->etaGen);
+					cout<<Evt->pfIso<<" "<<Evt->detIso<<endl;
                                 }
                         }else{
                                 float feta=fabs(Evt->etaGen);
@@ -865,12 +970,37 @@ void SLPlotter::TheFill(HistoMaker *obj,EventElecComm *Evt){
                                 if(cond1 || cond2 || cond3){
                                         obj->Pt[19]->Fill(Evt->ptGen);
                                         obj->Eta[19]->Fill(Evt->etaGen);
+					cout<<Evt->pfIso<<" "<<Evt->detIso<<endl;
                                 }
                         }
 
 			
 		}
 	}
+	if(Evt->ptGen>20 && fabs(Evt->etaGen)<1.4 && Evt->isPF==1){
+        	float feta=fabs(Evt->etaGen);
+                float bdt=Evt->mva;
+                bool cond1=feta<0.8 && bdt>-0.34;
+                bool cond2=feta>0.8 && feta<1.479 && bdt>-0.65;
+                bool cond3=feta>1.479 && bdt>0.6;
+                if(cond1 || cond2 || cond3){
+                	obj->IsoDiscr[0]->Fill(Evt->ManualIsoPF/*Evt->pfIso*//*(Evt->isoChargedHadrons+Evt->isoNeutralHadrons+Evt->isoPhotons)/Evt->ptGen*/);
+                        obj->IsoDiscr[1]->Fill(Evt->detIso);
+ //                       cout<<Evt->pfIso<<" "<<Evt->detIso<<" "<<obj->IsoDiscr[0]->Integral()<<" "<<obj->IsoDiscr[1]->Integral()<<endl;
+                }
+        }
+	if(Evt->ptGen>20 && fabs(Evt->etaGen)>1.4 && Evt->isPF==1){
+                float feta=fabs(Evt->etaGen);
+                float bdt=Evt->mva;
+                bool cond1=feta<0.8 && bdt>-0.34;
+                bool cond2=feta>0.8 && feta<1.479 && bdt>-0.65;
+                bool cond3=feta>1.479 && bdt>0.6;
+                if(cond1 || cond2 || cond3){
+                        obj->IsoDiscr[2]->Fill(Evt->pfIso);
+			obj->IsoDiscr[3]->Fill(Evt->detIso);
+		}
+	}
+
 }
 
 
@@ -883,8 +1013,10 @@ void SLPlotter::FillHistos(){
         	bool isfromD=(Evt->origin==2);
 		bool isfromV=(Evt->origin==1);
         	bool isfromX=(Evt->origin==0);
-	//	if(Evt->ptGen>2 && fabs(Evt->etaGen)<2.4)cout<<Evt->ptGen<<" "<<Evt->etaGen<<" "<<isfromB<<" "<<abs(Evt->pdgId)<<endl;
+//		if(Evt->ptGen>2 && fabs(Evt->etaGen)<2.4)cout<<Evt->ptGen<<" "<<Evt->etaGen<<" "<<Evt->origin<<" "<<isfromB<<" "<<abs(Evt->pdgId)<<endl;
+//		if(Evt->origin==4)cout<<"###################################################################################"<<endl;
 		if(basicselection && isfromB && abs(Evt->pdgId)==11){
+//			cout<<" NON ISOLATED ELECTRON "<<endl;
 			TheFill(electron,Evt);
 			if(Evt->nPV<30){
 				TheFill(electron_lowPU,Evt);
@@ -897,13 +1029,15 @@ void SLPlotter::FillHistos(){
 			}
                 }
 		if(basicselection && isfromV && abs(Evt->pdgId)==11){
+//			cout<<" ISOLATED ELECTRON "<<endl;
 			TheFill(electron_isolated[0],Evt);
 			if(Evt->id_veto==1)TheFill(electron_isolated[1],Evt);
 			if(Evt->id_loose==1)TheFill(electron_isolated[2],Evt);
 			if(Evt->id_medium==1)TheFill(electron_isolated[3],Evt);
                         if(Evt->id_tight==1)TheFill(electron_isolated[4],Evt);
                 }
-		if(basicselection && abs(Evt->pdgId)==211){
+		if(basicselection && ((isfromX && abs(Evt->pdgId)==211) || (isfromB && abs(Evt->pdgId)==11) )){
+//			cout<<" PION ****************************"<<endl;
 			TheFill(pion,Evt);
 			if(Evt->nPV<30){
 				TheFill(pion_lowPU,Evt);
@@ -944,105 +1078,108 @@ void SLPlotter::FillHistos(){
 	pion_highPU->Combine();
 	kaon->Combine();
 	background[0]->Combine();
+	cout<<"Computing isolated discr eff"<<endl;
+	cout<<"----->"<<electron->HistoIsoEff[0]->Integral()<<endl;
 	electron_isolated[0]->EffSelDiscr();
+	cout<<"Computing background discr eff"<<endl;
+	cout<<"----->"<<electron_isolated[0]->HistoIsoEff[0]->Integral()<<endl;
 	background[0]->EffSelDiscr();
+	cout<<"Computing electron discr eff"<<endl;
+	cout<<"----->"<<electron->HistoIsoEff[0]->Integral()<<endl;
 	electron->EffSelDiscr();
+	cout<<"Computing pion discr eff"<<endl;
+	//cout<<"----->"<<electron->HistoIsoEff[0]->Integral()<<endl;
 	pion->EffSelDiscr();
 
 }
 
 
-void SLPlotter::setTDRStyle() {
-        gStyle->SetCanvasBorderMode(0);
-        gStyle->SetCanvasColor(kWhite);
-        gStyle->SetCanvasDefH(1500); //Height of canvas
-        gStyle->SetCanvasDefW(1500); //Width of canvas
-        gStyle->SetCanvasDefX(0);   //POsition on screen
-        gStyle->SetCanvasDefY(0);
+void SLPlotter::cmsPrel(float lumi, float energy, bool simOnly, bool onLeft, float sp) {
+  TLatex latex;
+  
+  float t = gStyle->GetPadTopMargin()/(1-sp);
+  float tmpTextSize=0.75*t;
+  latex.SetTextSize(tmpTextSize);
+  latex.SetNDC();
+  float textSize=latex.GetTextSize();
 
-        gStyle->SetPadBorderMode(0);
-        gStyle->SetPadColor(kWhite);
-        gStyle->SetPadGridX(false);
-        gStyle->SetPadGridY(false);
-        gStyle->SetGridColor(0);
-        gStyle->SetGridStyle(3);
-        gStyle->SetGridWidth(1);
+  latex.SetName("lumiText");
+  latex.SetTextFont(42);
 
-        gStyle->SetFrameBorderMode(0);
-        gStyle->SetFrameBorderSize(0.1);
-        gStyle->SetFrameFillColor(0);
-        gStyle->SetFrameFillStyle(0);
-        gStyle->SetFrameLineColor(1);
-        gStyle->SetFrameLineStyle(1);
-        gStyle->SetFrameLineWidth(0.1);
-
-        gStyle->SetHistLineColor(1);
-        gStyle->SetHistLineStyle(0);
-        gStyle->SetHistLineWidth(0.1);
-
-        gStyle->SetEndErrorSize(2);
-//        gStyle->SetErrorX(0.);
-        gStyle->SetMarkerStyle(20);
-
-        gStyle->SetOptFit(1);
-        gStyle->SetFitFormat("5.4g");
-        gStyle->SetFuncColor(2);
-        gStyle->SetFuncStyle(1);
-        gStyle->SetFuncWidth(1);
-
-        gStyle->SetOptDate(0);
-        gStyle->SetOptStat(0);
-
-        // Margins:
-        gStyle->SetPadTopMargin(0.05);
-        gStyle->SetPadBottomMargin(0.13);
-        gStyle->SetPadLeftMargin(0.16);
-        gStyle->SetPadRightMargin(0.02);
-
-        // For the Global title:
-
-        gStyle->SetOptTitle(0);
-        gStyle->SetTitleFont(42);
-        gStyle->SetTitleColor(1);
-        gStyle->SetTitleTextColor(1);
-        gStyle->SetTitleFillColor(10);
-        gStyle->SetTitleFontSize(0.05);
-
-        // For the axis titles:
-
-        gStyle->SetTitleColor(1, "XYZ");
-        gStyle->SetTitleFont(42, "XYZ");
-        gStyle->SetTitleSize(0.06, "XYZ");
-        // gStyle->SetTitleXSize(Float_t size = 0.02); // Another way to set the size?
-        // gStyle->SetTitleYSize(Float_t size = 0.02);
-        gStyle->SetTitleXOffset(1.25);
-        gStyle->SetTitleYOffset(1.25);
-        // gStyle->SetTitleOffset(1.1, "Y"); // Another way to set the Offset
-
-        // For the axis labels:
-
-        gStyle->SetLabelColor(1, "XYZ");
-        gStyle->SetLabelFont(42, "XYZ");
-        gStyle->SetLabelOffset(0.007, "XYZ");
-        gStyle->SetLabelSize(0.05, "XYZ");
-
-        // For the axis:
-
-        gStyle->SetAxisColor(1, "XYZ");
-        gStyle->SetStripDecimals(kTRUE);
-        gStyle->SetTickLength(0.03, "XYZ");
-        gStyle->SetNdivisions(510, "XYZ");
-        gStyle->SetPadTickX(1);  // To get tick marks on the opposite side of the frame
-        gStyle->SetPadTickY(1);
-
-        // Change for log plots:
-        gStyle->SetOptLogx(0);
-        gStyle->SetOptLogy(0);
-        gStyle->SetOptLogz(0);
-
-        gROOT->ForceStyle();
-
+  if (lumi > 0.) {
+    latex.SetTextAlign(31);
+    latex.SetTextSize(textSize*0.6/0.75);
+    if(lumi > 1000 )
+      latex.DrawLatex(0.965,(sp==0)?0.965:0.945,Form(" %.1f fb^{-1} (%.0f TeV)",lumi/1000., energy));
+    else
+      latex.DrawLatex(0.965,(sp==0)?0.965:0.945,Form(" %.0f pb^{-1} (%.0f TeV)",lumi, energy));
+  }
+  else {
+    latex.SetTextAlign(31); // align right=31
+    latex.SetTextSize(textSize*0.6/0.75);
+    latex.DrawLatex(0.965,(sp==0)?0.965:0.945,Form(" (%.0f TeV)", energy));
+  }
+ 
+  latex.SetTextAlign(onLeft?11:31); // align left / right
+  latex.SetTextFont(61);
+  latex.SetTextSize(textSize);
+  latex.DrawLatex(onLeft?0.204:0.924, (sp==0)?0.89-0.025:0.858-0.04,"CMS");
+  
+  latex.SetTextFont(52);
+  latex.SetTextSize(textSize*0.76);
+  
+  if(simOnly)
+    latex.DrawLatex(onLeft?0.204:0.924, (sp==0)?0.858-0.025:0.8-0.04,"Simulation");
+  
 }
+
+vector<TPad*> SLPlotter::getPads(bool ratio, float& splitPad) {
+
+  vector<TPad*> pads;
+  
+  double bm_ = gStyle->GetPadBottomMargin();  
+  double tm_ = gStyle->GetPadTopMargin();
+  double lm_ = gStyle->GetPadLeftMargin();
+  double rm_ = gStyle->GetPadRightMargin();
+  
+  if(ratio) {
+    splitPad = 0.34;
+ 
+    TPad* pHigh =new TPad("pHigh","pHigh",
+			  0., splitPad ,1.,1.);
+  
+    TPad* pLow  =new TPad("pLow","pLow",
+			  0., 0. ,1.,splitPad);
+
+    pHigh->SetLeftMargin(lm_);
+    pHigh->SetRightMargin(rm_);
+    pHigh->SetTopMargin(tm_/(1-splitPad) );
+    pHigh->SetBottomMargin(0.02/(1-splitPad) );
+  
+    pLow->SetLeftMargin(lm_);
+    pLow->SetRightMargin(rm_);
+    pLow->SetTopMargin(0.01/splitPad);
+    pLow->SetBottomMargin(bm_/splitPad);
+  
+    pads.push_back(pHigh);
+    pads.push_back(pLow);
+  } 
+  else {
+    splitPad = 0;
+    TPad* pHigh =new TPad("pHigh","pHigh",
+			  0., 0. ,1.,1.);
+    
+    pHigh->SetLeftMargin(lm_);
+    pHigh->SetRightMargin(rm_);
+    pHigh->SetTopMargin(tm_);
+    pHigh->SetBottomMargin(bm_);
+    
+    pads.push_back(pHigh);
+  }
+
+  return pads;
+}
+
 
 class PlotTogether
 {
@@ -1063,7 +1200,12 @@ PlotTogether::~PlotTogether()
 
 void PlotTogether::EffPlotCombination(){
 	SLPlotter *plot[3];
-	
+	bool simOnly=true;
+         float energy=13;
+        float lumi=-1;
+        bool cmsPrelOnLeft=true;
+        float sp=1;
+        bool ratio=false;
 	plot[0]	=	new SLPlotter("inputSeedPlot_30_80_only","test1");
 	plot[1]	=	new SLPlotter("inputSeedPlot_80_170_only","test2");
 	plot[2]	=	new SLPlotter("inputSeedPlot_170_250_only","test3");
@@ -1077,7 +1219,7 @@ void PlotTogether::EffPlotCombination(){
         legend->SetFillColor(0);
         legend->SetTextSize(0.012);
 	for(int i=0;i<3;i++){
-		plot[i]->setTDRStyle();
+		plot[i]->officialStyle();
 		TString test="test";
 		plot[i]->getPlot(0,test);
 	}
@@ -1086,18 +1228,18 @@ void PlotTogether::EffPlotCombination(){
        		electron_any[u]=(TH1F*)plot[u]->electron->EffPt[3];
 		pion_EDS[u]=(TH1F*)plot[u]->pion->EffPt[2];
                 pion_any[u]=(TH1F*)plot[u]->pion->EffPt[3];
-		SetStyle(electron_EDS[u],1+u,26,3003,"p_{T} of the generated particle","Efficiency",0.0,1.25);
-		SetStyle(electron_any[u],1+u,22,3003,"p_{T} of the generated particle","Efficiency",0.0,1.05);
-		SetStyle(pion_EDS[u],1+u,24,3003,"p_{T} of the generated particle","Efficiency",0.0,1.05);
-		SetStyle(pion_any[u],1+u,20,3003,"p_{T} of the generated particle","Efficiency",0.0,1.05);
+		SetStyle(electron_EDS[u],1+u,26,3003,"p_{T} of the generated particle","Efficiency",0.0,1.25,sp,ratio);
+		SetStyle(electron_any[u],1+u,22,3003,"p_{T} of the generated particle","Efficiency",0.0,1.05,sp,ratio);
+		SetStyle(pion_EDS[u],1+u,24,3003,"p_{T} of the generated particle","Efficiency",0.0,1.05,sp,ratio);
+		SetStyle(pion_any[u],1+u,20,3003,"p_{T} of the generated particle","Efficiency",0.0,1.05,sp,ratio);
 	}
 
-        TCanvas *can2 = new TCanvas("h", "bla",600,600);
-        can2->SetLeftMargin(0.17);
+        TCanvas *can2 = new TCanvas("h", "bla");
+/*        can2->SetLeftMargin(0.17);
         can2->SetTopMargin(0.05);
         can2->SetRightMargin(0.05);
         can2->SetBottomMargin(0.15);
-
+*/
 //	gPad->SetGridx();
         gPad->SetGridy();
 	gPad->SetLogx(1);	
@@ -1124,5 +1266,72 @@ void PlotTogether::EffPlotCombination(){
         }
 	legend->Draw();
 	can2->Print("SeedG_Efficiencies_pt_comp.pdf");
+}
+
+void SLPlotter::officialStyle() {
+        gStyle->SetCanvasColor (0);
+        gStyle->SetCanvasBorderSize(10);
+        gStyle->SetCanvasBorderMode(0);
+        gStyle->SetCanvasDefH (700);
+        gStyle->SetCanvasDefW (700);
+        gStyle->SetCanvasDefX (100);
+        gStyle->SetCanvasDefY (100);
+        gStyle->SetPadColor (0);
+        gStyle->SetPadBorderSize (10);
+        gStyle->SetPadBorderMode (0);
+        float mb = 0.13;
+        float mt = 0.07;
+        float ml = 0.17;
+        float mr = 0.055;
+        gStyle->SetPadBottomMargin(mb);
+        gStyle->SetPadTopMargin (mt);
+        gStyle->SetPadLeftMargin (ml);
+        gStyle->SetPadRightMargin (mr);
+        gStyle->SetPadGridX (0);
+        gStyle->SetPadGridY (0);
+        gStyle->SetPadTickX (1);
+        gStyle->SetPadTickY (1);
+        gStyle->SetLineWidth(3);
+        gStyle->SetFrameFillStyle ( 0);
+        gStyle->SetFrameFillColor ( 0);
+        gStyle->SetFrameLineColor ( 1);
+        gStyle->SetFrameLineStyle ( 0);
+        gStyle->SetFrameLineWidth ( 2);
+        gStyle->SetFrameBorderSize(10);
+        gStyle->SetFrameBorderMode( 0);
+        gStyle->SetHistFillColor(2);
+        gStyle->SetHistFillStyle(0);
+        gStyle->SetHistLineColor(1);
+        gStyle->SetHistLineStyle(0);
+        gStyle->SetHistLineWidth(3);
+        gStyle->SetNdivisions(505);
+        gStyle->SetFuncColor(1);
+        gStyle->SetFuncStyle(0);
+        gStyle->SetFuncWidth(2);
+        gStyle->SetMarkerStyle(20);
+        gStyle->SetMarkerColor(kBlack);
+        gStyle->SetMarkerSize (1.4);
+        gStyle->SetTitleBorderSize(0);
+        gStyle->SetTitleFillColor (0);
+        gStyle->SetTitleX (0.2);
+        gStyle->SetTitleSize (0.055,"X");
+        gStyle->SetTitleOffset(1.100,"X");
+        gStyle->SetLabelOffset(0.005,"X");
+        gStyle->SetLabelSize (0.050,"X");
+        gStyle->SetLabelFont (42 ,"X");
+        gStyle->SetStripDecimals(false);
+        gStyle->SetLineStyleString(11,"20 10");
+        gStyle->SetTitleSize (0.055,"Y");
+        gStyle->SetTitleOffset(1.60,"Y");
+        gStyle->SetLabelOffset(0.010,"Y");
+        gStyle->SetLabelSize (0.050,"Y");
+        gStyle->SetLabelFont (42 ,"Y");
+        gStyle->SetTextSize (0.055);
+        gStyle->SetTextFont (42);
+        gStyle->SetStatFont (42);
+        gStyle->SetTitleFont (42);
+        gStyle->SetTitleFont (42,"X");
+        gStyle->SetTitleFont (42,"Y");
+        gStyle->SetOptStat (0);
 }
 
